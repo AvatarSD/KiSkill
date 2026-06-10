@@ -1,0 +1,6 @@
+svg_out/
+*.rpt
+*.net
+render.png
+crop*.png
+__pycache__/
