@@ -188,6 +188,8 @@ Float hygiene: `round(coord, 3)` everywhere — `160.02 + 7.62` produces
   entries; report regrouping moves pre-existing items around.
 - Expected-benign classes: `isolated_pin_label` on block I/O, undriven
   inputs awaiting later wiring, pre-existing unwired-MCU noise.
+- `missing_unit`/`missing_input_pin` warnings: EVERY unit of a multi-unit
+  part must be placed — tie unused opamps off (in+ → GND, in− → out).
 - The exported **netlist is the ground truth** for connectivity: parse
   `(net (name)(node (ref)(pin)))` blocks and assert each designed net has
   exactly the expected members. Do this at least once per block.
