@@ -3,6 +3,8 @@
 Subcommands grow with the atomic-op set (DESIGN.md §4). Today:
   kx probe FILE.kicad_sch   structured inventory of a schematic
   kx check FILE             parse + round-trip sanity (exit 1 on fail)
+  kx diff REV FILE          triple diff (pixel/semantic/ERC) vs git REV;
+                            artifacts under ~/.cache/kx_scratch
 """
 
 from __future__ import annotations
@@ -73,6 +75,39 @@ def check(path: str) -> bool:
     return list(sexp.tokens(tree)) == list(sexp.tokens(sexp.parse(sexp.dumps(tree))))
 
 
+def diff_rev(rev: str, path: str) -> dict:
+    """Triple diff of working-tree `path` against git revision `rev`."""
+    import pathlib
+    import subprocess
+
+    from . import diff
+
+    p = pathlib.Path(path).resolve()
+    top = subprocess.run(["git", "-C", str(p.parent), "rev-parse",
+                          "--show-toplevel"], capture_output=True,
+                         text=True, check=True).stdout.strip()
+    rel = p.relative_to(top)
+    diff.SCRATCH.mkdir(parents=True, exist_ok=True)
+    base = diff.SCRATCH / f"base_{p.name}"
+    blob = subprocess.run(["git", "-C", top, "show", f"{rev}:{rel}"],
+                          capture_output=True, text=True, check=True).stdout
+    base.write_text(blob)
+
+    pr_a, pr_b = probe(str(base)), probe(str(p))
+    png_a = diff.render_png(str(base), str(diff.SCRATCH / "base.png"))
+    png_b = diff.render_png(str(p), str(diff.SCRATCH / "new.png"))
+    out = {
+        "semantic": diff.semantic_diff(pr_a, pr_b),
+        "pixel": diff.pixel_diff(png_a, png_b,
+                                 str(diff.SCRATCH / "diff.png"),
+                                 paper=pr_b["paper"]),
+        **diff.erc_diff(diff.erc_report(str(base), "base"),
+                        diff.erc_report(str(p), "new")),
+        "artifacts": {"base_png": png_a, "new_png": png_b},
+    }
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if len(argv) < 2:
@@ -87,6 +122,10 @@ def main(argv: list[str] | None = None) -> int:
         ok = check(path)
         print("OK" if ok else "FAIL", path)
         return 0 if ok else 1
+    if cmd == "diff" and len(argv) >= 3:
+        json.dump(diff_rev(argv[1], argv[2]), sys.stdout, indent=1)
+        print()
+        return 0
     print(f"unknown command {cmd!r}")
     return 2
 
