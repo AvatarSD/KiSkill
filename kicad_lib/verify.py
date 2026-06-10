@@ -156,9 +156,10 @@ def verify(
             elif _interior(s, q):
                 by_net[s.net] = by_net.get(s.net, 0) + 1
                 interior_hit[s.net] = True
-        for p in pins:
-            if p.p == q:
-                by_net[p.net] = by_net.get(p.net, 0) + 1
+        # coincident pins (multi-unit stacks like MCP6002 V-) are ONE item:
+        # eeschema connects pin-on-pin without a junction
+        for net in {p.net for p in pins if p.p == q}:
+            by_net[net] = by_net.get(net, 0) + 1
         for net, n in by_net.items():
             if n >= 2 and interior_hit.get(net):
                 need.add(q)
