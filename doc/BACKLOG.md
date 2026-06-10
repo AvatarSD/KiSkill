@@ -11,7 +11,7 @@
       set-diff; `kx diff REV FILE` — then thicken kicad-review skill.
 - [ ] Serializer byte-fidelity: match eeschema corner cases so unchanged
       files round-trip byte-identical (sch currently ~0.5% whitespace drift).
-- [ ] index.py: sqlite FTS over flatpak+project libs; `kx find "dual comparator"`.
+- [x] index.py: sqlite FTS5 over flatpak+project libs; kx index / kx find (22712 symbols, 21 s full / 0.09 s incremental).
 - [ ] source.py: easyeda2kicad wrapper + zip import + lib-table register;
       `kx fetch C2040`.
 - [ ] Vendor KiCad api protos (shallow clone kicad/api) + live.py adapter

@@ -5,6 +5,8 @@ Subcommands grow with the atomic-op set (DESIGN.md §4). Today:
   kx check FILE             parse + round-trip sanity (exit 1 on fail)
   kx diff REV FILE          triple diff (pixel/semantic/ERC) vs git REV;
                             artifacts under ~/.cache/kx_scratch
+  kx index [DIR ...]        (re)build component index (incremental)
+  kx find QUERY...          ranked symbol search over the index
 """
 
 from __future__ import annotations
@@ -110,6 +112,19 @@ def diff_rev(rev: str, path: str) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    if not argv:
+        print(__doc__)
+        return 2
+    if argv[0] == "index":
+        from . import index
+        json.dump(index.build(argv[1:]), sys.stdout, indent=1)
+        print()
+        return 0
+    if argv[0] == "find" and len(argv) >= 2:
+        from . import index
+        json.dump(index.find(" ".join(argv[1:])), sys.stdout, indent=1)
+        print()
+        return 0
     if len(argv) < 2:
         print(__doc__)
         return 2

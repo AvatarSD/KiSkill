@@ -18,8 +18,12 @@ description: >
    (footprints idem, `.../Library.Footprints/.../footprints/*.pretty`).
    Grep symbol names: `grep -l '(symbol "NAME' *.kicad_sym` then extract
    the balanced block with `kicad_lib.sexp`.
-3. `kicad_lib/index.py` (sqlite FTS index) — TODO, build on first need:
-   scan all libs → (lib, name, pins, keywords, fp_filters, datasheet).
+3. **Index (implemented):** `cd ~/prj/20260610_kicad-agent-skills &&
+   python3 -m kicad_lib.cli find dual comparator` → ranked lib_id hits
+   with description/keywords/pins. First run `kx index [PROJECT_LIB_DIR]`
+   (22k official symbols ≈ 20 s once; mtime-incremental ≈ 0.1 s after).
+   DB: ~/.cache/kx_scratch/symbols.sqlite; `extends` children inherit
+   base description/keywords so families are searchable.
 
 ## Internet fetch
 
