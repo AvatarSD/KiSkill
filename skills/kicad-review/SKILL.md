@@ -13,7 +13,8 @@ description: >
 ## Triple diff (vs git baseline)
 
 1. **Pixel**: render BOTH revisions identically
-   (`git show REV:FILE > /tmp_scratch; kicad-cli sch export svg ...`),
+   (`git show REV:FILE > $HOME/.cache/kx_scratch/...` — NEVER /tmp, the
+   flatpak kicad-cli cannot see host /tmp; then `kicad-cli sch export svg`),
    rasterize at the same width (cairosvg), then composite:
    grey = unchanged, red = removed, green = added (PIL ImageChops.difference
    per revision against the common base). Crop changed regions, Read PNGs.

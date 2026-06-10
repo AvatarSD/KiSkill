@@ -14,7 +14,8 @@ Repo: `~/prj/20260610_kicad-agent-skills` (engine + design docs).
 ## Session entry protocol (always)
 
 1. `flatpak run --command=kicad-cli org.kicad.KiCad version` — confirm env.
-2. Lock files `~NAME.kicad_*.lck` present ⇒ KiCad is OPEN: do not write;
+2. Lock files `~NAME.kicad_*.lck` (tilde = literal filename prefix, not
+   `$HOME`) present ⇒ KiCad is OPEN: do not write;
    ask the user to close/reload, or work on a scratch copy.
 3. Git: checkpoint-commit the project BEFORE the first modification.
 4. `python3 -m kicad_lib.cli probe FILE` from the repo root — inventory

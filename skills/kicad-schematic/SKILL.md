@@ -13,7 +13,7 @@ description: >
 # KiCad schematic generation
 
 **Engine:** `~/prj/20260610_kicad-agent-skills/kicad_lib/` — lossless sexp
-parser (`sexp.py`, token-equal round-trip proven on 2.3 MB boards) and the
+parser (`sexp.py`, token-equal round-trip proven on 2.3 MB boards; byte-identity only for .kicad_mod — sch re-serializes with ~0.5% whitespace drift) and the
 `kx` CLI (`python3 -m kicad_lib.cli probe|check FILE` from the repo root).
 Prefer `kx probe` over ad-hoc grep for inventory; prefer `sexp.py` over
 regex surgery for edits. Sibling skills: kicad-project (state machine),

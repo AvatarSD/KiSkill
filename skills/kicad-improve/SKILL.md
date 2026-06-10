@@ -17,7 +17,8 @@ projects (read-only soak targets only); use `tests/fixtures/`.
 1. `git -C ~/prj/20260610_kicad-agent-skills log --oneline | head` +
    read `doc/BACKLOG.md` — pick the TOP unchecked item only.
 2. If the item needs domain knowledge: ONE focused forum/web sweep
-   (kicad.info, EEVblog, Hackaday, official dev-docs); distill into the
+   (kicad.info, EEVblog, Hackaday, official dev-docs — WebSearch/WebFetch
+   are deferred tools: load via ToolSearch first); distill into the
    relevant SKILL.md or doc/DESIGN.md — cite the source.
 3. Build the slice; test on fixtures (`python3 tests/test_roundtrip.py`
    plus slice-specific test); mutation-test any new verifier rule.
