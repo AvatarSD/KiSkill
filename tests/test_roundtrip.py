@@ -13,7 +13,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from kicad_lib import sexp  # noqa: E402
 
 
-def roundtrip(path: pathlib.Path) -> bool:
+def roundtrip(path: pathlib.Path, require_bytes: bool = False) -> bool:
     text = path.read_text(encoding="utf-8")
     tree = sexp.parse(text)
     out = sexp.dumps(tree)
@@ -28,10 +28,15 @@ def roundtrip(path: pathlib.Path) -> bool:
         print(f"FAIL {path.name}: token count {len(t1)} != {len(t2)}")
         return False
 
-    same = "byte-identical" if out == text else (
-        f"byte-diff (in {len(text)}B out {len(out)}B) — token-equal"
-    )
-    print(f"OK   {path.name}: {len(t1)} tokens, {same}")
+    if out == text:
+        print(f"OK   {path.name}: {len(t1)} tokens, byte-identical")
+        return True
+    if require_bytes:
+        print(f"FAIL {path.name}: byte drift (in {len(text)}B out {len(out)}B)"
+              " — sch/sym/mod must be byte-stable")
+        return False
+    print(f"OK   {path.name}: {len(t1)} tokens, token-equal "
+          f"(byte drift {len(out) - len(text):+d}B tolerated for this type)")
     return True
 
 
@@ -58,7 +63,7 @@ def main() -> int:
     targets += [pathlib.Path(a) for a in sys.argv[1:]]
     ok = mutation_check()
     for p in targets:
-        ok &= roundtrip(p)
+        ok &= roundtrip(p, require_bytes=p.suffix != ".kicad_pcb")
     print("PASS" if ok else "FAIL")
     return 0 if ok else 1
 

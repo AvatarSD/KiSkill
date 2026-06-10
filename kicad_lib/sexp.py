@@ -127,6 +127,17 @@ def _emit(node: SExpr, indent: int) -> Iterator[str]:
     if all(not isinstance(x, list) for x in node):
         yield tab + "(" + " ".join(_atom_text(x) for x in node) + ")"
         return
+    # eeschema groups all (xy ...) points of a pts block on ONE line
+    if tag_of(node) == "pts" and all(
+        isinstance(x, list) and tag_of(x) == "xy"
+        and not any(isinstance(y, list) for y in x)
+        for x in node[1:]
+    ):
+        row = " ".join(
+            "(" + " ".join(_atom_text(y) for y in x) + ")" for x in node[1:]
+        )
+        yield tab + "(pts\n" + tab + "\t" + row + "\n" + tab + ")"
+        return
     head = [x for x in node if not isinstance(x, list)]
     yield tab + "(" + " ".join(_atom_text(x) for x in head)
     for x in node:
