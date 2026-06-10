@@ -12,8 +12,8 @@
 - [ ] Serializer byte-fidelity: match eeschema corner cases so unchanged
       files round-trip byte-identical (sch currently ~0.5% whitespace drift).
 - [x] index.py: sqlite FTS5 over flatpak+project libs; kx index / kx find (22712 symbols, 21 s full / 0.09 s incremental).
-- [ ] source.py: easyeda2kicad wrapper + zip import + lib-table register;
-      `kx fetch C2040`.
+- [x] source.py: kx fetch (live-tested C25804: sym+fp+3D+tables) +
+      kx import-zip + idempotent register; .venv for PEP 668.
 - [ ] Vendor KiCad api protos (shallow clone kicad/api) + live.py adapter
       skeleton (file | ipc | headless); detect KICAD_API_SOCKET.
 - [ ] kicad-pcb skill: port SKILL.md §10 footprint staging onto kicad_lib.

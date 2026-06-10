@@ -27,12 +27,17 @@ description: >
 
 ## Internet fetch
 
-- **LCSC/JLC part known** (preferred): `pip install easyeda2kicad`;
-  `easyeda2kicad --full --lcsc_id=C2040 --output PROJECT/easyeda2kicad`
-  → symbol + footprint + 3D model; then register both lib tables.
-- **SnapEDA/UltraLibrarian zip** (user downloads, no open API): unzip,
-  copy .kicad_sym + .pretty into project lib dir, register, normalize
-  with `kicad-cli sym upgrade` / `fp upgrade` if format is old.
+- **LCSC/JLC part known** (implemented, preferred):
+  `python3 -m kicad_lib.cli fetch C25804 /path/to/project` → symbol +
+  footprint + 3D (wrl+step) in PROJECT/libs/ AND both lib tables
+  registered (${KIPRJMOD} URIs), idempotent. Binary lives in the repo
+  .venv (PEP 668 box); fetch needs real network (sandbox blocks DNS —
+  run unsandboxed). v1.0.1 quirk handled: --project-relative resolves
+  against CWD, so kx runs it from the project dir.
+- **SnapEDA/UltraLibrarian zip** (implemented; user downloads, no open
+  API): `python3 -m kicad_lib.cli import-zip part.zip /path/to/project`
+  → libs/<name>.kicad_sym + .pretty + tables; legacy .lib auto-upgraded
+  via kicad-cli sym upgrade.
 - Always sanity-check fetched footprints visually: render via
   `kicad-cli pcb export svg` on a scratch board, compare against the
   datasheet land pattern. Internet footprints are guilty until proven.

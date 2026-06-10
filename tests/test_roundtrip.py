@@ -54,16 +54,30 @@ def mutation_check() -> bool:
     return True
 
 
+def order_check() -> bool:
+    """Atoms interleaved between list children (legacy third-party style
+    like '(effects (font ...) hide)') must keep their token order."""
+    src = '(a x (b 1) hide (c 2) y)'
+    t = sexp.parse(src)
+    same = list(sexp.tokens(t)) == list(sexp.tokens(sexp.parse(sexp.dumps(t))))
+    print(("OK   " if same else "FAIL ") + "order: interleaved atoms preserved")
+    return same
+
+
 def main() -> int:
     here = pathlib.Path(__file__).resolve().parent
     targets = sorted(
         p for pat in ("*.kicad_sch", "*.kicad_pcb", "*.kicad_sym", "*.kicad_mod")
         for p in (here / "fixtures").rglob(pat)
     )
-    targets += [pathlib.Path(a) for a in sys.argv[1:]]
-    ok = mutation_check()
+    extras = [pathlib.Path(a) for a in sys.argv[1:]]
+    ok = mutation_check() and order_check()
     for p in targets:
+        # byte-stability is demanded only of eeschema/kx-authored fixtures;
+        # argv extras may come from other generators (easyeda2kicad…)
         ok &= roundtrip(p, require_bytes=p.suffix != ".kicad_pcb")
+    for p in extras:
+        ok &= roundtrip(p)
     print("PASS" if ok else "FAIL")
     return 0 if ok else 1
 

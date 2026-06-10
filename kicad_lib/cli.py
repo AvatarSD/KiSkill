@@ -7,6 +7,8 @@ Subcommands grow with the atomic-op set (DESIGN.md §4). Today:
                             artifacts under ~/.cache/kx_scratch
   kx index [DIR ...]        (re)build component index (incremental)
   kx find QUERY...          ranked symbol search over the index
+  kx fetch LCSC_ID PROJ     download symbol+fp+3D, register lib tables
+  kx import-zip ZIP PROJ    import SnapEDA/UltraLibrarian zip, register
 """
 
 from __future__ import annotations
@@ -123,6 +125,16 @@ def main(argv: list[str] | None = None) -> int:
     if argv[0] == "find" and len(argv) >= 2:
         from . import index
         json.dump(index.find(" ".join(argv[1:])), sys.stdout, indent=1)
+        print()
+        return 0
+    if argv[0] == "fetch" and len(argv) >= 3:
+        from . import source
+        json.dump(source.fetch_lcsc(argv[1], argv[2]), sys.stdout, indent=1)
+        print()
+        return 0
+    if argv[0] == "import-zip" and len(argv) >= 3:
+        from . import source
+        json.dump(source.import_zip(argv[1], argv[2]), sys.stdout, indent=1)
         print()
         return 0
     if len(argv) < 2:

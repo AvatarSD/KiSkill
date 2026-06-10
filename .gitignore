@@ -1,6 +1,7 @@
-svg_out/
-*.rpt
-*.net
-render.png
 crop*.png
+*.net
 __pycache__/
+render.png
+*.rpt
+svg_out/
+.venv/

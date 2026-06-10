@@ -138,12 +138,18 @@ def _emit(node: SExpr, indent: int) -> Iterator[str]:
         )
         yield tab + "(pts\n" + tab + "\t" + row + "\n" + tab + ")"
         return
-    head = [x for x in node if not isinstance(x, list)]
+    # atoms before the first list child share the head line; anything
+    # after stays IN ORDER (third-party files interleave bare atoms like
+    # legacy "hide" after list children — reordering corrupts them)
+    first_list = next(i for i, x in enumerate(node) if isinstance(x, list))
+    head = node[:first_list]
     yield tab + "(" + " ".join(_atom_text(x) for x in head)
-    for x in node:
+    for x in node[first_list:]:
+        yield "\n"
         if isinstance(x, list):
-            yield "\n"
             yield from _emit(x, indent + 1)
+        else:
+            yield tab + "\t" + _atom_text(x)
     yield "\n" + tab + ")"
 
 
