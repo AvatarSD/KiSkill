@@ -1,6 +1,6 @@
 # Backlog (self-improvement loop fuel — top item first)
 
-- [ ] Port geom.py (rot_xy, grid, pin world pos) + verify.py (rule set of
+- [x] Port geom.py (rot_xy, grid, pin world pos) + verify.py (rule set of
       SKILL.md §6) from gen_hiside_kicad.py; mutation-test the verifier.
 - [ ] Create own minimal test project in tests/fixtures/testproj/
       (RC divider + opamp, ERC-clean) generated via kicad_lib — becomes

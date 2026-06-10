@@ -153,6 +153,11 @@ the project standalone, also emit `scaffold.kicad_sym` + a project
 
 ## 6. Geometric verifier (run before every write)
 
+**Implemented:** `kicad_lib/verify.py` (`Seg`/`Pin`/`verify()`) +
+`kicad_lib/geom.py` (`rot_xy`, `pin_world`, `snap`) — mutation-tested by
+`tests/test_verify.py`. Build your net model with these; do NOT rewrite
+the verifier per-generator.
+
 Mandatory checks over all generated segments + pins:
 
 1. Everything on the 1.27 mm grid; no diagonal segments.
