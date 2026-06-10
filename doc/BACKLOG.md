@@ -5,8 +5,8 @@
 - [x] Create own minimal test project in tests/fixtures/testproj/
       (RC divider + opamp, ERC-clean) generated via kicad_lib — becomes
       the canonical scratch target for all write-path tests.
-- [ ] kx atomic write ops: place / wire / label / junction / set_prop /
-      delete (each: precondition → action → postcondition, verifier-gated).
+- [x] kx atomic write ops (library level): place / wire / label / junction / set_prop /
+      delete — DONE at lib level (ops.py); follow-up: argparse CLI surface for write ops.
 - [ ] diff.py: pixel composite (red/green), semantic probe-diff, ERC
       set-diff; `kx diff REV FILE` — then thicken kicad-review skill.
 - [ ] Serializer byte-fidelity: match eeschema corner cases so unchanged
