@@ -12,16 +12,19 @@ description: >
 
 ## Triple diff (vs git baseline)
 
-1. **Pixel**: render BOTH revisions identically
-   (`git show REV:FILE > $HOME/.cache/kx_scratch/...` — NEVER /tmp, the
-   flatpak kicad-cli cannot see host /tmp; then `kicad-cli sch export svg`),
-   rasterize at the same width (cairosvg), then composite:
-   grey = unchanged, red = removed, green = added (PIL ImageChops.difference
-   per revision against the common base). Crop changed regions, Read PNGs.
-2. **Semantic**: `kx probe` both revisions, diff the JSON (symbols
-   added/removed/moved, label set changes, count deltas).
-3. **ERC set-diff**: run ERC on both, normalize `type: @location`,
-   set-subtract. Judge only NEW violations (skill kicad-schematic §7).
+**Implemented:** `cd ~/prj/20260610_kicad-agent-skills && python3 -m
+kicad_lib.cli diff REV /abs/path/FILE.kicad_sch` → JSON with `semantic`
+(symbols added/removed/moved/changed, labels, count deltas), `pixel`
+(changed_px + bbox_mm + composite path), `erc_new`/`erc_gone`. Artifacts
+land in `~/.cache/kx_scratch/` (never /tmp — flatpak kicad-cli can't see
+host /tmp): `diff.png` composite (grey = unchanged, red = removed,
+green = added). Crop the bbox_mm region and Read it as evidence.
+
+Gotchas baked into kicad_lib/diff.py — keep them if reimplementing:
+- kicad-cli `--no-background-color` SVGs rasterize to TRANSPARENT PNGs;
+  flatten onto white before grayscale or `convert("L")` maps the whole
+  background to black and the diff goes blind.
+- ERC report lines normalize to `type @(x mm, y mm)`; set-diff both ways.
 
 ## Rule canon — machine tier (verifier enforces)
 

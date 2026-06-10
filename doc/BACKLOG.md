@@ -7,7 +7,7 @@
       the canonical scratch target for all write-path tests.
 - [x] kx atomic write ops (library level): place / wire / label / junction / set_prop /
       delete — DONE at lib level (ops.py); follow-up: argparse CLI surface for write ops.
-- [ ] diff.py: pixel composite (red/green), semantic probe-diff, ERC
+- [x] diff.py: pixel composite (red/green), semantic probe-diff, ERC
       set-diff; `kx diff REV FILE` — then thicken kicad-review skill.
 - [ ] Serializer byte-fidelity: match eeschema corner cases so unchanged
       files round-trip byte-identical (sch currently ~0.5% whitespace drift).
