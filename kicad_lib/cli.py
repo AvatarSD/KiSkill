@@ -9,6 +9,7 @@ Subcommands grow with the atomic-op set (DESIGN.md §4). Today:
   kx find QUERY...          ranked symbol search over the index
   kx fetch LCSC_ID PROJ     download symbol+fp+3D, register lib tables
   kx import-zip ZIP PROJ    import SnapEDA/UltraLibrarian zip, register
+  kx env [PROJECT_DIR]      backend detection: file/ipc/headless, locks
 """
 
 from __future__ import annotations
@@ -135,6 +136,12 @@ def main(argv: list[str] | None = None) -> int:
     if argv[0] == "import-zip" and len(argv) >= 3:
         from . import source
         json.dump(source.import_zip(argv[1], argv[2]), sys.stdout, indent=1)
+        print()
+        return 0
+    if argv[0] == "env":
+        from . import live
+        json.dump(live.detect(argv[1] if len(argv) > 1 else None),
+                  sys.stdout, indent=1)
         print()
         return 0
     if len(argv) < 2:

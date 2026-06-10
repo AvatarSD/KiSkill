@@ -14,8 +14,9 @@
 - [x] index.py: sqlite FTS5 over flatpak+project libs; kx index / kx find (22712 symbols, 21 s full / 0.09 s incremental).
 - [x] source.py: kx fetch (live-tested C25804: sym+fp+3D+tables) +
       kx import-zip + idempotent register; .venv for PEP 668.
-- [ ] Vendor KiCad api protos (shallow clone kicad/api) + live.py adapter
-      skeleton (file | ipc | headless); detect KICAD_API_SOCKET.
+- [x] live.py adapter (file | ipc | headless) + kx env detection.
+      DECISION: depend on kipy (.venv) instead of vendoring raw protos —
+      kipy ships generated bindings and tracks upstream.
 - [ ] kicad-pcb skill: port SKILL.md §10 footprint staging onto kicad_lib.
 - [ ] kicad-layout meta-skill: schematic→board flow, freerouting DSN/SES
       loop, DRC-gated iteration.
