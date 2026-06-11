@@ -11,6 +11,8 @@ Subcommands grow with the atomic-op set (DESIGN.md §4). Today:
   kx import-zip ZIP PROJ    import SnapEDA/UltraLibrarian zip, register
   kx env [PROJECT_DIR]      backend detection: file/ipc/headless, locks
   kx fab SCH|- PCB|- OUTDIR fab bundle: BOM + JLC BOM/CPL + gerbers+drill
+  kx live CMD [ARGS]        verified atomic ops on the RUNNING KiCad
+                            (snap/refs/check/wire/junction/label/text/rm)
 """
 
 from __future__ import annotations
@@ -149,6 +151,23 @@ def main(argv: list[str] | None = None) -> int:
                   sys.stdout, indent=1)
         print()
         return 0
+    if argv[0] == "live":
+        # kipy lives in the repo .venv — re-exec there (idempotent)
+        import os
+        import pathlib
+        import subprocess
+        from . import live
+        if not live.VENV_PY.exists():
+            print("repo .venv missing — run tools/bootstrap_kipy.sh")
+            return 2
+        if pathlib.Path(sys.executable) != live.VENV_PY:
+            root = pathlib.Path(__file__).resolve().parents[1]
+            env = dict(os.environ, PYTHONPATH=str(root))
+            return subprocess.run(
+                [str(live.VENV_PY), "-m", "kicad_lib.live_ops", *argv[1:]],
+                env=env).returncode
+        from . import live_ops
+        return live_ops.main(argv[1:])
     if argv[0] == "fab" and len(argv) >= 4:
         from . import fab
         json.dump(fab.bundle(None if argv[1] == "-" else argv[1],
