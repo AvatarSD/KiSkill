@@ -18,8 +18,7 @@ description: >
    (footprints idem, `.../Library.Footprints/.../footprints/*.pretty`).
    Grep symbol names: `grep -l '(symbol "NAME' *.kicad_sym` then extract
    the balanced block with `kicad_lib.sexp`.
-3. **Index (implemented):** `cd ~/prj/20260610_kicad-agent-skills &&
-   python3 -m kicad_lib.cli find dual comparator` → ranked lib_id hits
+3. **Index (implemented):** `kx find dual comparator` → ranked lib_id hits
    with description/keywords/pins. First run `kx index [PROJECT_LIB_DIR]`
    (22k official symbols ≈ 20 s once; mtime-incremental ≈ 0.1 s after).
    DB: ~/.cache/kx_scratch/symbols.sqlite; `extends` children inherit
@@ -28,14 +27,14 @@ description: >
 ## Internet fetch
 
 - **LCSC/JLC part known** (implemented, preferred):
-  `python3 -m kicad_lib.cli fetch C25804 /path/to/project` → symbol +
+  `kx fetch C25804 /path/to/project` → symbol +
   footprint + 3D (wrl+step) in PROJECT/libs/ AND both lib tables
   registered (${KIPRJMOD} URIs), idempotent. Binary lives in the repo
   .venv (PEP 668 box); fetch needs real network (sandbox blocks DNS —
   run unsandboxed). v1.0.1 quirk handled: --project-relative resolves
   against CWD, so kx runs it from the project dir.
 - **SnapEDA/UltraLibrarian zip** (implemented; user downloads, no open
-  API): `python3 -m kicad_lib.cli import-zip part.zip /path/to/project`
+  API): `kx import-zip part.zip /path/to/project`
   → libs/<name>.kicad_sym + .pretty + tables; legacy .lib auto-upgraded
   via kicad-cli sym upgrade.
 - Always sanity-check fetched footprints visually: render via

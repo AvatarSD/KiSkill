@@ -89,9 +89,13 @@ def diff_rev(rev: str, path: str) -> dict:
     from . import diff
 
     p = pathlib.Path(path).resolve()
-    top = subprocess.run(["git", "-C", str(p.parent), "rev-parse",
-                          "--show-toplevel"], capture_output=True,
-                         text=True, check=True).stdout.strip()
+    r0 = subprocess.run(["git", "-C", str(p.parent), "rev-parse",
+                         "--show-toplevel"], capture_output=True, text=True)
+    if r0.returncode != 0:
+        raise RuntimeError(
+            f"kx diff needs {p} inside a git repo (baseline = git revision); "
+            "for two loose files use kicad_lib.diff primitives directly")
+    top = r0.stdout.strip()
     rel = p.relative_to(top)
     diff.SCRATCH.mkdir(parents=True, exist_ok=True)
     base = diff.SCRATCH / f"base_{p.name}"

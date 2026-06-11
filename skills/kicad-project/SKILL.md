@@ -13,14 +13,17 @@ Repo: `~/prj/20260610_kicad-agent-skills` (engine + design docs).
 
 ## Session entry protocol (always)
 
-1. `cd ~/prj/20260610_kicad-agent-skills && python3 -m kicad_lib.cli env
-   PROJECT_DIR` — one call: kicad-cli version, lock files (tilde = literal
-   filename prefix), IPC socket/aliveness, recommended backend. If
-   `file.writable_now` is false, KiCad has the project OPEN: do not
-   write; ask the user to close/reload, or work on a scratch copy.
+1. `kx env PROJECT_DIR` — one call: kicad-cli (+nightly) version, lock
+   files (tilde = literal filename prefix), IPC socket/aliveness,
+   recommended backend. If `backends.file.writable_now` is false, KiCad
+   has the project OPEN: do not write; ask the user to close/reload, or
+   work on a scratch copy.
+   `kx` = ~/.local/bin/kx → repo bin/kx (self-sets PYTHONPATH; works
+   from any cwd). Python API instead: run with
+   PYTHONPATH=~/prj/20260610_kicad-agent-skills (no pip install).
 2. Git: checkpoint-commit the project BEFORE the first modification.
-3. `python3 -m kicad_lib.cli probe FILE` — inventory (uuid, paper,
-   symbols/refs, labels, sheets, cached libs).
+3. `kx probe FILE` — inventory (uuid, paper, symbols/refs, labels,
+   sheets, cached libs).
 
 ## State machine (DESIGN.md §3)
 

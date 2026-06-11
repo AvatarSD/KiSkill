@@ -19,8 +19,11 @@ Produces: `bom.csv` (grouped by Value+Footprint, Qty column),
 
 ## Notes
 
-- JLC assembly needs an **LCSC field on each symbol** — add via
-  `ops.set_prop(doc, "R1", "LCSC", "C25804")` (kx fetch tells you the id).
+- JLC assembly needs an **LCSC field on each symbol** — full snippet
+  (PYTHONPATH=<repo>): `doc = sexp.load_file(SCH);
+  ops.set_prop(doc, "R1", "LCSC", "C25804");
+  sexp.save_file(SCH, doc)` — save_file takes PATH FIRST.
+  (`kx fetch` tells you the id.)
 - Group key is Value+Footprint: identical parts collapse to one row with
   ranges (R1,R2 / Qty 2). DNP parts are excluded from the JLC BOM only.
 - Power symbols/flags never reach the BOM (KiCad excludes # refs).

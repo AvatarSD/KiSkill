@@ -5,6 +5,7 @@ Slow (~10 s: netlist export + svg export via flatpak).
 Usage: python3 tests/test_pcb.py
 """
 
+import os
 import pathlib
 import subprocess
 import sys
@@ -13,8 +14,12 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from kicad_lib import pcb, sexp  # noqa: E402
 
 HERE = pathlib.Path(__file__).resolve().parent
-DONOR = ("/home/sd/prj/20250713_ig-smartgrow/gorshok/smartgrow-gorshok/"
-         "hat/strawberry_1170-hat/strawberry_1170-hat.kicad_pcb")
+DONOR = os.environ.get("KX_DONOR_PCB", (
+    "/home/sd/prj/20250713_ig-smartgrow/gorshok/smartgrow-gorshok/"
+    "hat/strawberry_1170-hat/strawberry_1170-hat.kicad_pcb"))
+if not pathlib.Path(DONOR).exists():
+    print("SKIP: donor board missing — set KX_DONOR_PCB to any .kicad_pcb")
+    raise SystemExit(0)
 FAILS = []
 
 

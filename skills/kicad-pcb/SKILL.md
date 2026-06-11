@@ -10,6 +10,7 @@ description: >
 # PCB footprint staging & board ops
 
 Engine: `~/prj/20260610_kicad-agent-skills/kicad_lib/pcb.py`
+(python API: PYTHONPATH=<repo> or cwd=<repo>; CLI: `kx` is on PATH)
 (`netlist`, `load_footprint`, `stage`, `edge_cuts_bbox`,
 `empty_board_from`). Worked example: `tests/test_pcb.py`.
 

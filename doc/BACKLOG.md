@@ -28,8 +28,10 @@
       sudo): prepare() from board incl. stackup translation, dockerized
       run(). Smoke sim VALIDATED (meander_loose: rc 0, physical S11).
       Follow-up: port placement on own boards (simulation-port fps).
-- [ ] Subagent e2e: spawn subagent per skill against testproj; record
-      gaps as new backlog items.
+- [x] Subagent e2e sweep #2: all 7 functional checks PASS cold; 16 gaps
+      found and fixed (kx wrapper in ~/.local/bin, save_file order doc,
+      probe import, crop formula, donor env override, freerouting glob,
+      nightly-aware kx env, stale docstring, DESIGN model.py).
 - [ ] KiCad 11 nightly (needs sudo PPA or source build — user action);
       then live schematic IPC via kipy in live.py.
 - [ ] Forum sweep cadence: one distilled lesson per tick max into skills.

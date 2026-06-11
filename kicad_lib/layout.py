@@ -15,8 +15,11 @@ import pathlib
 import subprocess
 
 SCRATCH = pathlib.Path.home() / ".cache/kx_scratch"
-FREEROUTING = (pathlib.Path(__file__).resolve().parents[1] /
-               ".tools/freerouting-2.2.4-linux-x64/bin/freerouting")
+_TOOLS = pathlib.Path(__file__).resolve().parents[1] / ".tools"
+# any unzipped freerouting-*-linux-x64 bundle qualifies (version-agnostic)
+FREEROUTING = next(iter(sorted(
+    _TOOLS.glob("freerouting-*-linux-x64/bin/freerouting"), reverse=True)),
+    _TOOLS / "freerouting-missing/bin/freerouting")
 
 
 def _pcbnew(code: str) -> str:

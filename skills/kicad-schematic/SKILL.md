@@ -16,7 +16,9 @@ description: >
 parser (`sexp.py`, token-equal round-trip proven on 2.3 MB boards; byte-identity only for .kicad_mod — sch re-serializes with ~0.5% whitespace drift) and the
 `kx` CLI (`python3 -m kicad_lib.cli probe|check FILE` from the repo root).
 Prefer `kx probe` over ad-hoc grep for inventory; prefer `sexp.py` over
-regex surgery for edits. Sibling skills: kicad-project (state machine),
+regex surgery for edits (`kx` is on PATH via ~/.local/bin). Persist with
+`sexp.save_file(path, root)` — PATH FIRST. Python imports need
+PYTHONPATH=<repo> or cwd=<repo>; the package is not pip-installed. Sibling skills: kicad-project (state machine),
 kicad-component (find/fetch parts), kicad-review (diff/ERC), kicad-improve
 (self-improvement loop). Design: `doc/DESIGN.md` in that repo.
 

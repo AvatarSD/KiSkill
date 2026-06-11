@@ -20,6 +20,13 @@ land in `~/.cache/kx_scratch/` (never /tmp — flatpak kicad-cli can't see
 host /tmp): `diff.png` composite (grey = unchanged, red = removed,
 green = added). Crop the bbox_mm region and Read it as evidence.
 
+Python API: `probe()` lives in `kicad_lib.cli` (NOT .source);
+`diff.semantic_diff(probe_a, probe_b)` takes its dicts. `kx diff` needs
+the FILE inside a git repo (baseline = revision); for two loose files
+call `diff.render_png`/`pixel_diff`/`semantic_diff` directly.
+Crop formula: px = mm * render_width_px / paper_width_mm (A4=297,
+A3=420; render default 2400 px wide).
+
 Gotchas baked into kicad_lib/diff.py — keep them if reimplementing:
 - kicad-cli `--no-background-color` SVGs rasterize to TRANSPARENT PNGs;
   flatten onto white before grayscale or `convert("L")` maps the whole

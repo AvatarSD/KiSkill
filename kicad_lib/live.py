@@ -22,10 +22,26 @@ VENV_PY = pathlib.Path(__file__).resolve().parents[1] / ".venv/bin/python"
 KICAD_CLI = ["flatpak", "run", "--command=kicad-cli", "org.kicad.KiCad"]
 
 
+NIGHTLY_CLI = pathlib.Path("/usr/lib/kicad-nightly/bin/kicad-cli")
+
+
 def kicad_version() -> str | None:
     try:
         r = subprocess.run(KICAD_CLI + ["version"], capture_output=True,
                            text=True, timeout=30)
+        return r.stdout.strip() or None
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def nightly_version() -> str | None:
+    """KiCad nightly (apt kicad-nightly pkg) coexists with the flatpak;
+    its kicad-cli lives outside PATH. v11+ brings schematic IPC."""
+    if not NIGHTLY_CLI.exists():
+        return None
+    try:
+        r = subprocess.run([str(NIGHTLY_CLI), "version"],
+                           capture_output=True, text=True, timeout=30)
         return r.stdout.strip() or None
     except (OSError, subprocess.TimeoutExpired):
         return None
@@ -67,13 +83,19 @@ def ipc_ping() -> bool:
 
 
 def detect(project_dir: str | None = None) -> dict:
+    def major_of(v: str | None) -> int:
+        m = re.match(r"(\d+)\.", v or "")
+        return int(m.group(1)) if m else 0
+
     ver = kicad_version()
-    major = int(m.group(1)) if ver and (m := re.match(r"(\d+)\.", ver)) else 0
+    nver = nightly_version()
+    best_major = max(major_of(ver), major_of(nver))
     locks = lock_files(project_dir) if project_dir else []
     sock = ipc_socket()
     alive = ipc_ping() if sock else False
     return {
         "kicad_cli": ver,
+        "kicad_nightly": nver,
         "lock_files": locks,
         "ipc_socket": sock,
         "ipc_alive": alive,
@@ -83,11 +105,14 @@ def detect(project_dir: str | None = None) -> dict:
                      "writable_now": not locks,
                      "note": "close/reload KiCad around edits" if locks else ""},
             "ipc": {"available": alive,
-                    "scope": "pcb" if alive and major <= 10 else
-                             ("pcb+sch" if alive else None)},
-            "headless": {"available": major >= 11,
-                         "note": "" if major >= 11 else
-                                 "needs KiCad 11+ (nightly PPA, sudo)"},
+                    "scope": ("pcb+sch" if alive and best_major >= 11
+                              else ("pcb" if alive else None)),
+                    "note": "" if alive else
+                            "launch KiCad with the IPC API enabled "
+                            "(Preferences > Plugins)"},
+            "headless": {"available": best_major >= 11,
+                         "note": (f"use {NIGHTLY_CLI.parent}" if nver else
+                                  "needs KiCad 11+ (nightly PPA, sudo)")},
         },
         "recommended": ("ipc" if alive else "file"),
     }

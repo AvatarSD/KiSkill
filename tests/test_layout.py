@@ -5,6 +5,7 @@ bundled freerouting, SES-import back, count copper. SLOW (~1-2 min).
 Usage: python3 tests/test_layout.py
 """
 
+import os
 import pathlib
 import sys
 import uuid
@@ -14,8 +15,12 @@ from kicad_lib import layout, pcb, sexp  # noqa: E402
 from kicad_lib.sexp import Sym, QStr  # noqa: E402
 
 HERE = pathlib.Path(__file__).resolve().parent
-DONOR = ("/home/sd/prj/20250713_ig-smartgrow/gorshok/smartgrow-gorshok/"
-         "hat/strawberry_1170-hat/strawberry_1170-hat.kicad_pcb")
+DONOR = os.environ.get("KX_DONOR_PCB", (
+    "/home/sd/prj/20250713_ig-smartgrow/gorshok/smartgrow-gorshok/"
+    "hat/strawberry_1170-hat/strawberry_1170-hat.kicad_pcb"))
+if not pathlib.Path(DONOR).exists():
+    print("SKIP: donor board missing — set KX_DONOR_PCB to any .kicad_pcb")
+    raise SystemExit(0)
 FAILS = []
 
 

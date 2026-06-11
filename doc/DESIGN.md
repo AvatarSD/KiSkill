@@ -12,7 +12,7 @@ kicad_lib/
               kiutils' fixed dataclass schema breaks on new format versions,
               kicad-skip is REPL-oriented; we need format-version tolerance)
   geom.py     1.27 mm grid, rotation/mirror math, pin world positions
-  model.py    typed read views over sexp trees: Symbol, Wire, Label, Sheet…
+  (model.py was folded into cli.probe + sexp helpers — no module)
   verify.py   geometric verifier — hard rules, run before every write
   index.py    component index: flatpak libs + project libs → sqlite FTS
   source.py   internet sourcing: easyeda2kicad (LCSC), SnapEDA/UL zip

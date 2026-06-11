@@ -1,0 +1,4 @@
+#!/bin/sh
+# kx — KiCad agent CLI (kicad_lib.cli). Works from any cwd.
+KX_ROOT="$(dirname "$(dirname "$(readlink -f "$0")")")"
+PYTHONPATH="$KX_ROOT${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m kicad_lib.cli "$@"

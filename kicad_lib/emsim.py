@@ -1,7 +1,8 @@
 """EM field simulation via gerber2ems (Antmicro) + openEMS, dockerized.
 
-STATUS: runner is interface-complete; first full smoke sim pending the
-docker image build (compiles openEMS at gerber2ems' pinned commit).
+STATUS: chain validated — meander_loose example simulated end-to-end
+(rc 0, physically correct S11). Image: `docker build -t gerber2ems
+<repo>/.tools/gerber2ems/` (compiles openEMS at the pinned commit).
 
 Workdir layout gerber2ems expects (matches kx fab naming):
   WORK/fab/NAME-<Layer>.gbr ('.'->'_' in layer), NAME-PTH.drl,
