@@ -1,4 +1,4 @@
-"""Component index: every symbol in the official flatpak libraries plus
+"""Component index: every symbol in the official libraries (flatpak or native — kcli.symbols_dir) plus
 any project libs, scanned into sqlite FTS5 for instant fuzzy lookup.
 
   kx index [DIR ...]      (re)scan — mtime-incremental, safe to rerun
@@ -14,13 +14,9 @@ from __future__ import annotations
 import pathlib
 import sqlite3
 
-from . import sexp
+from . import kcli, sexp
 
 DB = pathlib.Path.home() / ".cache/kx_scratch/symbols.sqlite"
-OFFICIAL = pathlib.Path.home() / (
-    ".local/share/flatpak/runtime/org.kicad.KiCad.Library.Symbols/"
-    "x86_64/stable/active/files/symbols"
-)
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS files(path TEXT PRIMARY KEY, mtime REAL);
@@ -75,8 +71,11 @@ def connect() -> sqlite3.Connection:
 
 
 def build(dirs: list[str] | None = None, verbose: bool = True) -> dict:
-    """Incremental scan of OFFICIAL plus any extra dirs (recursive)."""
-    roots = [OFFICIAL] + [pathlib.Path(d) for d in (dirs or [])]
+    """Incremental scan of the official libs (kcli.symbols_dir — flatpak
+    or native, KX_KICAD_SYMBOLS override) plus any extra dirs (recursive)."""
+    official = kcli.symbols_dir()
+    roots = ([official] if official else []) + \
+        [pathlib.Path(d) for d in (dirs or [])]
     libs = sorted({p for r in roots if r.exists()
                    for p in r.rglob("*.kicad_sym")})
     con = connect()

@@ -3,7 +3,7 @@ behind the REVIEWED state (kicad-review skill):
 
   semantic_diff  probe-JSON delta: symbols added/removed/moved/changed,
                  label set changes, body-count deltas
-  erc_report     headless flatpak ERC normalized to "type @(x, y)" set
+  erc_report     headless ERC (kcli-resolved CLI) normalized to "type @(x, y)" set
   pixel_diff     render-level composite: grey = unchanged ink,
                  red = removed (only in base), green = added (only in new)
 
@@ -17,8 +17,9 @@ import pathlib
 import re
 import subprocess
 
+from . import kcli
+
 SCRATCH = pathlib.Path.home() / ".cache/kx_scratch"
-KICAD_CLI = ["flatpak", "run", "--command=kicad-cli", "org.kicad.KiCad"]
 PAPER_W = {"A5": 210, "A4": 297, "A3": 420, "A2": 594, "A1": 841}
 
 
@@ -59,7 +60,7 @@ def erc_report(sch: str, tag: str) -> set[str]:
     """Run headless ERC; normalize each violation to 'type @(x, y)'."""
     SCRATCH.mkdir(parents=True, exist_ok=True)
     rpt = SCRATCH / f"erc_{tag}.rpt"
-    subprocess.run(KICAD_CLI + ["sch", "erc", "--output", str(rpt),
+    subprocess.run(kcli.cmd() + ["sch", "erc", "--output", str(rpt),
                                 "--severity-all", sch],
                    capture_output=True, text=True)
     out, vtype = set(), "?"
@@ -83,7 +84,7 @@ def render_png(sch: str, out_png: str, width: int = 2400) -> str:
 
     sch_p = pathlib.Path(sch)
     svg_dir = SCRATCH / f"svg_{sch_p.stem}_{abs(hash(sch)) % 99999}"
-    subprocess.run(KICAD_CLI + ["sch", "export", "svg", "--output",
+    subprocess.run(kcli.cmd() + ["sch", "export", "svg", "--output",
                                 str(svg_dir), "--no-background-color", sch],
                    capture_output=True, text=True)
     svgs = sorted(svg_dir.glob("*.svg"))

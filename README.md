@@ -32,9 +32,11 @@ cd KiSkill
 
 `install.sh` is idempotent (re-run after `git pull`) and reversible
 (`./install.sh --uninstall`). The engine is pure Python stdlib, so there's
-nothing to compile. KiCad itself (for ERC / render / fab) is driven through
-the `org.kicad.KiCad` flatpak today; a native-`kicad-cli` resolver is on the
-backlog (`doc/BACKLOG.md`).
+nothing to compile. KiCad itself (for ERC / render / fab) is resolved
+automatically: native `kicad-cli` on PATH first, then the `org.kicad.KiCad`
+flatpak, then the nightly. Override with `KX_KICAD_CLI` — e.g. set it to
+`kicad-cli-nightly` when you edit with the v11 nightly, so verification
+evidence comes from the same engine that writes your files.
 
 Then just ask:
 
@@ -76,9 +78,9 @@ the distilled schematic rule canon.
 ## Requirements
 
 - Python 3.10+ (engine is stdlib-only).
-- KiCad 9 or 10 as the `org.kicad.KiCad` flatpak — for ERC, rendering, and
-  fab output. Pure file parsing/editing works without it. (Native
-  `kicad-cli` support is on the backlog.)
+- KiCad 9 or 10 — native or flatpak (auto-resolved; `KX_KICAD_CLI` to pin) —
+  for ERC, rendering, and fab output. Pure file parsing/editing works
+  without it.
 - Optional per-skill: `cairosvg`/Pillow (render crops), Docker (emsim),
   a bundled freerouting jar (layout).
 

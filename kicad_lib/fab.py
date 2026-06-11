@@ -8,11 +8,11 @@ from __future__ import annotations
 import pathlib
 import subprocess
 
-KICAD_CLI = ["flatpak", "run", "--command=kicad-cli", "org.kicad.KiCad"]
+from . import kcli
 
 
 def _run(args: list[str]) -> str:
-    r = subprocess.run(KICAD_CLI + args, capture_output=True, text=True)
+    r = subprocess.run(kcli.cmd() + args, capture_output=True, text=True)
     if r.returncode != 0:
         raise RuntimeError(f"kicad-cli {' '.join(args[:3])} failed: "
                            f"{r.stderr or r.stdout}")

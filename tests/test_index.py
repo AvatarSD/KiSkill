@@ -26,7 +26,8 @@ def check(name, cond):
 with tempfile.TemporaryDirectory() as td:
     tdp = pathlib.Path(td)
     index.DB = tdp / "idx.sqlite"          # hermetic DB
-    index.OFFICIAL = tdp / "no-official"   # keep the big libs out
+    # keep the big official libs out (kcli.symbols_dir env override)
+    os.environ["KX_KICAD_SYMBOLS"] = str(tdp / "no-official")
 
     # synthesize a one-lib fixture from the dac_buf cache
     r = ops.extract_libdef(str(HERE / "fixtures/dac_buf.kicad_sch"),

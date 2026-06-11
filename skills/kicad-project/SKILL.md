@@ -21,6 +21,12 @@ Repo: `$(kx root)` (engine + design docs).
    `kx` = ~/.local/bin/kx → repo bin/kx (self-sets PYTHONPATH; works
    from any cwd). Python API instead: run with
    PYTHONPATH=$(kx root) (no pip install).
+   kicad-cli is resolved by kicad_lib/kcli.py: KX_KICAD_CLI env →
+   native on PATH → flatpak → nightly. VERSION-SKEW RULE: evidence
+   (ERC/render/netlist) must come from the same engine that writes the
+   files — if the user edits with the v11 nightly, set
+   `KX_KICAD_CLI=kicad-cli-nightly` for the session; a stable CLI may
+   misread nightly-saved files and the diff/ERC evidence silently lies.
 2. Git: checkpoint-commit the project BEFORE the first modification.
 3. `kx probe FILE` — inventory (uuid, paper, symbols/refs, labels,
    sheets, cached libs).

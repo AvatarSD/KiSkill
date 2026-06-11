@@ -18,7 +18,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-from kicad_lib import cli, diff, pcb, sexp  # noqa: E402
+from kicad_lib import cli, diff, kcli, pcb, sexp  # noqa: E402
 
 HERE = pathlib.Path(__file__).resolve().parent
 SRC = HERE / "fixtures/testproj/testproj.kicad_sch"
@@ -34,7 +34,7 @@ def check(name, cond):
 def raw_power_out(sch_path: str) -> list:
     """power_out nodes straight from the exported netlist."""
     nl = diff.SCRATCH / "pa.net"
-    pcb.subprocess.run(pcb.KICAD_CLI + ["sch", "export", "netlist",
+    pcb.subprocess.run(kcli.cmd() + ["sch", "export", "netlist",
                                         "--output", str(nl), sch_path],
                        capture_output=True, text=True)
     r = sexp.load_file(str(nl))

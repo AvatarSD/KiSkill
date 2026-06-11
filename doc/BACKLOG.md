@@ -65,12 +65,15 @@
       netmodel verify → roundtrip token gate → atomic save (tmp+rename);
       refusal writes NOTHING. Single-command reliable edits, no
       agent-written Python required. Depends on netmodel above.
-- [ ] kicad-cli resolver: KX_KICAD_CLI env → native `kicad-cli` on PATH →
-      nightly wrapper → flatpak; ONE function shared by diff/fab/pcb/
-      emsim (today each hardcodes the flatpak invocation; live.py already
-      detects but nobody consumes it). Same for index.OFFICIAL → also try
-      /usr/share/kicad/symbols. Most users have native KiCad — first-run
-      experience for every cloner depends on this.
+- [x] kicad-cli resolver (PROMOTED — user runs the native nightly while
+      flatpak was hardcoded: evidence engine ≠ editing engine).
+      kcli.py: KX_KICAD_CLI env → native PATH → flatpak → nightly;
+      consumed by diff/fab/pcb/live + index symbols_dir (KX_KICAD_SYMBOLS
+      override, native /usr/share/kicad/symbols fallback). test_kcli 8/8
+      with faked PATH; nightly override proven end-to-end (10.99.0 via
+      resolver). Version-skew rule documented in kicad-project SKILL.
+      Residual: layout.py still uses flatpak pcbnew-python (different
+      animal — needs the pcbnew module, not kicad-cli).
 - [ ] extends-resolution in ops.extract_libdef — official libs are mostly
       derived symbols (opamp/regulator families); place() refuses them
       today. index._scan_lib already inherits base fields; port the

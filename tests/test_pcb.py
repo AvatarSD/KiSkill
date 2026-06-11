@@ -11,7 +11,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-from kicad_lib import pcb, sexp  # noqa: E402
+from kicad_lib import kcli, pcb, sexp  # noqa: E402
 
 HERE = pathlib.Path(__file__).resolve().parent
 DONOR = os.environ.get("KX_DONOR_PCB", "")
@@ -70,7 +70,7 @@ check("uuids refreshed", src_uuids and staged_uuids
 out = pcb.SCRATCH / "staged.kicad_pcb"
 sexp.save_file(str(out), board)
 svg = pcb.SCRATCH / "staged.svg"
-r = subprocess.run(pcb.KICAD_CLI + ["pcb", "export", "svg", "--output",
+r = subprocess.run(kcli.cmd() + ["pcb", "export", "svg", "--output",
                                     str(svg), "--layers",
                                     "F.Cu,Edge.Cuts,F.SilkS", str(out)],
                    capture_output=True, text=True)

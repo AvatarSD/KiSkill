@@ -18,8 +18,9 @@ import pathlib
 import re
 import subprocess
 
+from . import kcli
+
 VENV_PY = pathlib.Path(__file__).resolve().parents[1] / ".venv/bin/python"
-KICAD_CLI = ["flatpak", "run", "--command=kicad-cli", "org.kicad.KiCad"]
 
 
 # the raw binary under /usr/lib/kicad-nightly/bin needs LD_LIBRARY_PATH;
@@ -30,7 +31,7 @@ NIGHTLY_BIN_DIR = pathlib.Path("/usr/lib/kicad-nightly/bin")
 
 def kicad_version() -> str | None:
     try:
-        r = subprocess.run(KICAD_CLI + ["version"], capture_output=True,
+        r = subprocess.run(kcli.cmd() + ["version"], capture_output=True,
                            text=True, timeout=30)
         return r.stdout.strip() or None
     except (OSError, subprocess.TimeoutExpired):

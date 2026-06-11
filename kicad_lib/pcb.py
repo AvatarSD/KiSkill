@@ -12,11 +12,9 @@ import pathlib
 import subprocess
 import uuid as _uuid
 
-from . import sexp
+from . import kcli, sexp
 from .sexp import Sym, QStr
 from .geom import Point
-
-KICAD_CLI = ["flatpak", "run", "--command=kicad-cli", "org.kicad.KiCad"]
 SCRATCH = pathlib.Path.home() / ".cache/kx_scratch"
 
 
@@ -25,7 +23,7 @@ def netlist(sch_path: str) -> dict:
     The netlist is the connectivity ground truth (SKILL.md §7)."""
     SCRATCH.mkdir(parents=True, exist_ok=True)
     out = SCRATCH / "kx_netlist.net"
-    r = subprocess.run(KICAD_CLI + ["sch", "export", "netlist", "--output",
+    r = subprocess.run(kcli.cmd() + ["sch", "export", "netlist", "--output",
                                     str(out), sch_path],
                        capture_output=True, text=True)
     if not out.exists():
