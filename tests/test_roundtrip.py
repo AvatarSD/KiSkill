@@ -7,6 +7,7 @@ Default targets: every fixture in tests/fixtures plus any *.kicad_sch /
 """
 
 import sys
+import os
 import pathlib
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
@@ -73,11 +74,18 @@ def main() -> int:
     extras = [pathlib.Path(a) for a in sys.argv[1:]]
     ok = mutation_check() and order_check()
     for p in targets:
-        # byte-stability is demanded only of eeschema/kx-authored fixtures;
-        # argv extras may come from other generators (easyeda2kicad…)
-        ok &= roundtrip(p, require_bytes=p.suffix != ".kicad_pcb")
+        ok &= roundtrip(p, require_bytes=True)
     for p in extras:
+        # argv extras may come from other generators (easyeda2kicad…)
         ok &= roundtrip(p)
+    # byte-identity soak on a REAL pcbnew-saved board (read-only donor)
+    donor = pathlib.Path(os.environ.get("KX_DONOR_PCB", (
+        "/home/sd/prj/20250713_ig-smartgrow/gorshok/smartgrow-gorshok/"
+        "hat/strawberry_1170-hat/strawberry_1170-hat.kicad_pcb")))
+    if donor.exists():
+        ok &= roundtrip(donor, require_bytes=True)
+    else:
+        print("note: donor pcb missing — set KX_DONOR_PCB for the soak")
     print("PASS" if ok else "FAIL")
     return 0 if ok else 1
 

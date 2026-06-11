@@ -107,10 +107,21 @@ def _parse_many(text: str, pos: int) -> tuple[list, int]:
     return root, pos
 
 
-def dumps(node: SExpr, indent: int = 0) -> str:
+PCB_ROOTS = frozenset({"kicad_pcb", "footprint"})
+
+
+def dumps(node: SExpr, indent: int = 0, dialect: str | None = None) -> str:
     """Serialize in KiCad 10 style: tab indent, atoms-only nodes inline,
-    any node with a list child goes multiline."""
-    return "".join(_emit(node, indent)) + "\n"
+    any node with a list child goes multiline.
+
+    dialect picks the pts rule — the two formatters genuinely differ:
+      "sch"  eeschema: ALL (xy …) of a pts block on one line
+      "pcb"  pcbnew:   ≤5 points one line, else wrapped 4 per line
+    Default sniffs the root tag (kicad_pcb/footprint → "pcb")."""
+    if dialect is None:
+        dialect = ("pcb" if isinstance(node, list)
+                   and tag_of(node) in PCB_ROOTS else "sch")
+    return "".join(_emit(node, indent, dialect)) + "\n"
 
 
 def _atom_text(a: SExpr) -> str:
@@ -119,24 +130,47 @@ def _atom_text(a: SExpr) -> str:
     return str(a)
 
 
-def _emit(node: SExpr, indent: int) -> Iterator[str]:
+WRAP_COL = 72  # KICAD_FORMAT::Prettify consecutive-token wrap threshold
+
+
+def _emit(node: SExpr, indent: int, dialect: str = "sch") -> Iterator[str]:
     tab = "\t" * indent
     if not isinstance(node, list):
         yield tab + _atom_text(node)
         return
     if all(not isinstance(x, list) for x in node):
-        yield tab + "(" + " ".join(_atom_text(x) for x in node) + ")"
+        # KiCad's prettifier wraps BEFORE a token only when the column is
+        # already past WRAP_COL (tab = 1 col) — so one oversized string
+        # never wraps, but long runs of short tokens do. Continuation is
+        # one level deeper; ')' goes on its own line iff a wrap happened.
+        out = tab + "(" + _atom_text(node[0])
+        wrapped = False
+        for x in node[1:]:
+            t = _atom_text(x)
+            if len(out) >= WRAP_COL:
+                yield out + "\n"
+                out = tab + "\t" + t
+                wrapped = True
+            else:
+                out += " " + t
+        yield (out + "\n" + tab + ")") if wrapped else (out + ")")
         return
-    # eeschema groups all (xy ...) points of a pts block on ONE line
+    # pts blocks of plain (xy …): eeschema = one line; pcbnew = one line
+    # up to 5 points, 4-per-line chunks beyond (reverse-engineered from a
+    # 2.3 MB KiCad 10 board: patterns (3) (4) (5) and (4,4,3) only)
     if tag_of(node) == "pts" and all(
         isinstance(x, list) and tag_of(x) == "xy"
         and not any(isinstance(y, list) for y in x)
         for x in node[1:]
     ):
-        row = " ".join(
-            "(" + " ".join(_atom_text(y) for y in x) + ")" for x in node[1:]
-        )
-        yield tab + "(pts\n" + tab + "\t" + row + "\n" + tab + ")"
+        pts = ["(" + " ".join(_atom_text(y) for y in x) + ")"
+               for x in node[1:]]
+        if dialect == "pcb" and len(pts) > 5:
+            rows = [" ".join(pts[i:i + 4]) for i in range(0, len(pts), 4)]
+        else:
+            rows = [" ".join(pts)]
+        body = "\n".join(tab + "\t" + r for r in rows)
+        yield tab + "(pts\n" + body + "\n" + tab + ")"
         return
     # atoms before the first list child share the head line; anything
     # after stays IN ORDER (third-party files interleave bare atoms like
@@ -147,7 +181,7 @@ def _emit(node: SExpr, indent: int) -> Iterator[str]:
     for x in node[first_list:]:
         yield "\n"
         if isinstance(x, list):
-            yield from _emit(x, indent + 1)
+            yield from _emit(x, indent + 1, dialect)
         else:
             yield tab + "\t" + _atom_text(x)
     yield "\n" + tab + ")"
