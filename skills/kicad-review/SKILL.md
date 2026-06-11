@@ -57,6 +57,14 @@ Gotchas baked into kicad_lib/diff.py — keep them if reimplementing:
   and front-runs ERC (it agrees on `missing_unit`); ERC stays the authority
   for whether a placed spare is actually tied off.
 
+**What headless ERC does NOT catch** (verify separately — don't assume a
+green `kicad-cli sch erc` means these are clean):
+- Duplicate reference designators & unannotated `?` symbols — Annotation-tool
+  checks, not ERC. `kx ref-audit FILE` (multi-unit aware) catches them; ERC
+  stays 0/0 even with two `R1`s. (kicad.info t/32585)
+- Power-driver gaps once a `PWR_FLAG` exists in the netlist export — see
+  `power_pin_not_driven` above; use `kx power-audit`.
+
 ## Rule canon — machine tier (verifier enforces)
 
 grid 1.27 mm · no diagonals · junction dots at every connection ·

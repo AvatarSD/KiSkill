@@ -183,6 +183,13 @@ Float hygiene: `round(coord, 3)` everywhere — `160.02 + 7.62` produces
 - **References are global across ALL sheets of a project.** Collision-check
   against every `.kicad_sch` in the project dir, not just the target file.
   Duplicate refs silently cross-merge multi-unit symbols and corrupt ERC.
+- GOTCHA: `kicad-cli sch erc` does **NOT** catch duplicate designators or
+  unannotated symbols (`R?`) — even at `--severity-all`. They are
+  Annotation-tool checks (`SCH_REFERENCE_LIST`), not ERC violations, so a
+  headless ERC pass stays 0/0 green while two `R1`s cross-merge. Verify refs
+  with `kx ref-audit FILE` (multi-unit aware: U1A/U1B/U1C sharing `U1` is
+  fine; a repeated unit or two lib_ids on one ref is the real dup) or the
+  GUI Annotate dialog — never trust headless ERC for annotation.
 - `#PWR0NNN` refs: pick an unused high block.
 - ERC totals are noisy. Always: run ERC on the **pre-edit baseline**
   (`git show HEAD:file > baseline.kicad_sch`), normalize each violation to

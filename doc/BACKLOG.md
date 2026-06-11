@@ -73,9 +73,18 @@
     the rare NC-on-junction; the valuable one (flag MISSING NC on unused
     pins, the `pin_not_connected` direction) needs pin-world-pos → blocked on
     the live-IPC "pin world pos from lib cache" follow-up above.
-  - NEXT candidate (unblocked): reference annotation/uniqueness
-    (`unannotated` "R?", `duplicate_reference`). Lockable cold from testproj
-    (rewrite a Reference); probe already carries refs; multi-unit refs share
-    a designator legitimately so the check must key on (ref, unit, lib_id)
-    — reuse unit_audit's grouping. Completes the pre-flight ERC trio
-    (power / unit / reference) that front-runs the slow flatpak ERC.
+  - sweep 4 (2026-06-11, kicad.info t/32585 + Annotation docs): reference
+    uniqueness/annotation — completes the power/unit/reference pre-flight
+    trio. PROVEN gotcha: `kicad-cli sch erc --severity-all` is 0/0 BLIND to
+    BOTH duplicate designators (two R1) and unannotated `?` — they're
+    Annotation-tool checks (SCH_REFERENCE_LIST), not ERC. Shipped
+    `kx ref-audit` (multi-unit aware: U1A/B/C sharing "U1" not a dup) +
+    test_ref_audit (11/11, ERC blind while audit catches) + a "what headless
+    ERC does NOT catch" block in kicad-review & kicad-schematic §7.
+  - NEXT candidate (unblocked): default-DISABLED ERC checks. The erc .rpt
+    footer lists "Ignored checks": global-label-appears-once (catches label
+    typos), four-connection-points-joined, SPICE model issue, footprint-
+    filter-mismatch. kicad-cli runs the project severity config, so these
+    stay off — document how to enable (severity overrides) + which matter,
+    and lock by parsing the "Ignored checks" footer. Pairs with the
+    ERC-blindness theme (sweeps 1 & 4).
