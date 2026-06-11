@@ -37,7 +37,9 @@ with tempfile.TemporaryDirectory() as td:
     check("file backend blocked by lock",
           d["backends"]["file"]["available"]
           and not d["backends"]["file"]["writable_now"])
-    check("recommended falls back to file", d["recommended"] == "file")
+    # with a live KiCad up, ipc legitimately wins; file otherwise
+    check("recommended matches ipc liveness",
+          d["recommended"] == ("ipc" if d["ipc_alive"] else "file"))
     check("kicad-cli probed", (d["kicad_cli"] or "").startswith("10."))
 
     lck.unlink()

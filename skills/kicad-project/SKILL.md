@@ -32,6 +32,36 @@ RENDERED (svg→png, ERC run) → REVIEWED (pixel+semantic+ERC diff judged
 against rule canon) → COMMITTED. Never skip a state; never write a file
 that has not passed VERIFIED; never commit one that has not been REVIEWED.
 
+## Live IPC against the v11 nightly (validated 10.99.0 build 87de73b)
+
+- Enable once (KiCad closed): set `api.enable_server: true` in
+  `~/.config/kicad/10.99/kicad_common.json`.
+- Launch on a SCRATCH COPY (the nightly upgrades file formats on save):
+  `DISPLAY=:1 sh -c '. /usr/share/kicad-nightly/kicad-nightly.env &&
+  /usr/lib/kicad-nightly/bin/eeschema COPY.kicad_sch'` in background.
+  GUI needs X11 — pick the `DISPLAY` where `xset q` answers. Kill it
+  later with pkill; then rm stale `~*.lck` files.
+- Socket appears at `/tmp/kicad/api.sock` within ~1 s; verify with
+  `kx env` → `ipc_alive: true`, `open_documents` lists the schematic.
+- kipy MASTER is required (PyPI 0.7.1's schematic module is broken
+  against its own protos). Bootstrap: `tools/bootstrap_kipy.sh`
+  (protoc 29.x in ~/.local + protol; .pth-installs .tools/kicad-python).
+- HANDLER MAP (each frame registers its own handlers in-process):
+  - standalone eeschema HANDLES: get_open_documents, get_schematic,
+    get_items/symbols/lines/labels/text, begin/push commit,
+    create_items, remove_items — full live editing, undoable in GUI.
+  - standalone eeschema LACKS (ApiError "no handler"): ping,
+    get_version, save, save_as, revert, run_action — the agent CANNOT
+    persist from IPC; the USER saves (Ctrl+S), or do at-rest edits via
+    the file backend instead.
+  - kicad PM process handles ONLY ping + get_version (no frames).
+    Opening eeschema FROM the PM should merge both sets — needs one GUI
+    click (no xdotool on this box). Re-test on newer nightlies:
+    tests/test_live_ipc.py prints the gap map and flags improvements.
+- live.py's ipc_ping treats a structured ApiError as alive (transport
+  answered). `kicad-cli-nightly` (wrapper in /usr/bin) is the only way
+  to run the nightly CLI — the raw binary fails on LD_LIBRARY_PATH.
+
 ## Project hygiene
 
 - References are global across ALL sheets — collision-check project-wide.

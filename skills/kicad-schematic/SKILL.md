@@ -237,7 +237,31 @@ Goal: place footprints so KiCad's **Update PCB from Schematic** adopts them
 3. Stage in a grid clear of the board outline (probe Edge.Cuts extent).
 4. Parse-check via `pcb export svg`, render, eyeball, commit.
 
-## 11. Done checklist
+## 11. Live IPC editing (KiCad v11 nightly, GUI open)
+
+When `kx env` reports `ipc_alive: true` + scope `pcb+sch`, edit the
+schematic INSIDE the running eeschema instead of the file (the file is
+LOCKED then — never write it). kipy master via repo `.venv` (bootstrap:
+`tools/bootstrap_kipy.sh`); worked example `tests/test_live_ipc.py`:
+
+    from kipy import KiCad
+    import kipy.schematic_types as st
+    from kipy.geometry import Vector2          # nanometers: mm * 1e6
+    k = KiCad(socket_path="ipc:///tmp/kicad/api.sock")
+    sch = k.get_schematic()                    # the OPEN document
+    refs = [s.reference_field.text.value for s in sch.get_symbols()]
+    t = st.SchematicText(); t.value = "note"
+    t.position = Vector2.from_xy(50_800_000, 25_400_000)
+    c = sch.begin_commit(); sch.create_items(t); sch.push_commit(c, "msg")
+
+- Every push_commit is a single undo step in the GUI — small definitive
+  steps map 1:1 onto user-visible, user-revertable edits.
+- remove_items() deletes live. get_lines/get_labels/get_text mirror reads.
+- PERSISTENCE GAP (nightly 10.99 standalone): save/revert are unhandled
+  over IPC — the USER saves. Verify expected state on disk afterwards
+  with kx probe / kx check. Full handler map: kicad-project skill.
+
+## 12. Done checklist
 
 - [ ] Geometric verifier: 0 violations (and it failed when mutation-tested).
 - [ ] ERC set-diff vs baseline: no unexplained NEW entries.

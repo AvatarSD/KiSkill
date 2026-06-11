@@ -32,6 +32,14 @@
       found and fixed (kx wrapper in ~/.local/bin, save_file order doc,
       probe import, crop formula, donor env override, freerouting glob,
       nightly-aware kx env, stale docstring, DESIGN model.py).
-- [ ] KiCad 11 nightly (needs sudo PPA or source build — user action);
-      then live schematic IPC via kipy in live.py.
+- [x] KiCad 11 nightly installed (user) → LIVE SCHEMATIC IPC VALIDATED:
+      kipy master bootstrap (tools/bootstrap_kipy.sh), live read/create/
+      commit/remove on running eeschema (tests/test_live_ipc.py 11/11),
+      handler-gap map (standalone frames lack common handler: no save/
+      revert/run_action). Follow-ups: re-run gap map on nightly updates;
+      try eeschema-from-PM for the full handler union (1 GUI click or
+      xdotool); GUI→file persistence via get_items reconstruction if
+      upstream save stays missing.
+- [ ] Wire live-IPC into atomic ops: ops.py place/wire/label against the
+      IPC backend when ipc_alive (same verifier, same state machine).
 - [ ] Forum sweep cadence: one distilled lesson per tick max into skills.

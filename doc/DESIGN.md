@@ -83,15 +83,18 @@ to their IC; descriptive UPPERCASE net names; polarity marks visible;
 every IC pin accounted for; notes for non-obvious choices; title block
 filled; no text collisions.
 
-## 6. Real-time strategy
+## 6. Real-time strategy (VALIDATED on nightly 10.99.0 / kipy master)
 
-KiCad 10 has NO schematic IPC; sch IPC lands in v11 (kipy `get_schematic`
-tagged "KiCad 11"). live.py picks backend by probing KICAD_API_SOCKET +
-`kicad-cli version`. File mode: refuse writes while `~*.lck` present
-unless user confirms; after write, tell user to revert/reload in GUI.
-Vendor KiCad api protos (shallow clone of kicad/api) to track upstream;
-do NOT fork/patch KiCad C++ — consume v11 nightly instead (apt PPA
-`ppa:kicad/kicad-dev-nightly`, needs sudo; no nightly on flathub).
+Schematic IPC is real in the v11 nightly: get_schematic → read items,
+create_items/remove_items inside begin/push_commit (= GUI undo steps).
+live.py picks backend by probing KICAD_API_SOCKET + `kicad-cli version`
+(+ /usr/bin/kicad-cli-nightly; 10.99 counts as v11). File mode: refuse
+writes while `~*.lck` present. Known nightly gap: standalone frames
+lack the common handler (no save/revert/run_action over IPC) — user
+saves; tests/test_live_ipc.py re-maps the gap on every run. kipy from
+PyPI is broken for schematics; tools/bootstrap_kipy.sh builds master
+(.tools/kicad-python + protoc 29.x + protol + .pth). Do NOT fork/patch
+KiCad C++ — consume the nightly (apt PPA `ppa:kicad/kicad-dev-nightly`).
 
 ## 7. Testing policy
 
