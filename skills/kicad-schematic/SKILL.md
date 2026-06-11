@@ -197,6 +197,12 @@ Float hygiene: `round(coord, 3)` everywhere — `160.02 + 7.62` produces
   `kx unit-audit FILE` lists placed-vs-expected units per ref (reads the
   count from lib_symbols) and front-runs ERC; ERC is the authority on
   tie-off. (kicad.info unused-pin threads; KLC S4.5)
+- No-connect discipline: a genuinely unused pin needs a `(no_connect …)`
+  flag to silence `pin_not_connected` — DOCUMENT the intent, never lower
+  severity. Inverse trap `no_connect_connected`: a NC flag on a pin/node
+  that IS wired (flag and wiring contradict) — delete the flag OR the wire,
+  not both. NC means "nothing else attaches here"; one ERC entry lands at
+  the flag, one at the connected pin. (kicad.info t/46229, t/21294)
 - The exported **netlist is the ground truth** for connectivity: parse
   `(net (name)(node (ref)(pin)))` blocks and assert each designed net has
   exactly the expected members. Do this at least once per block.

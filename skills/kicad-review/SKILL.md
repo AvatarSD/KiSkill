@@ -43,6 +43,12 @@ Gotchas baked into kicad_lib/diff.py — keep them if reimplementing:
   PWR_FLAG/power nodes) — trust ERC, not a netlist driver scan.
 - `pin_not_connected` on block I/O / undriven inputs awaiting later
   wiring = expected-benign; keep in the baseline, judge only NEW entries.
+  For a GENUINELY unused pin (spare gate, NC silicon pad), the fix is a
+  No-Connect flag to document intent — never lower the rule's severity.
+- `no_connect_connected` — a NC flag sits on a pin/node that IS wired; the
+  flag and the wiring contradict. Fix = delete the flag (pin is used) OR the
+  wire (pin isn't), not both. NC means "nothing else attaches here". (KiCad
+  emits one entry at the flag and one at the connected pin.)
 - `missing_unit` / `missing_input_pin` — a multi-unit part (dual/quad opamp,
   logic-gate pack) has an unplaced unit. Place EVERY unit; a SPARE you don't
   use still goes on a sheet AND gets tied off (opamp: in+ → GND, in− → out;

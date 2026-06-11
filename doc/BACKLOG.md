@@ -62,8 +62,20 @@
     Shipped `kx unit-audit` (probe lib_unit_counts + per-ref placed-vs-
     expected) + test_unit_audit (11/11, audit agrees with ERC) + skill
     knowledge in kicad-schematic §7 & kicad-review.
-  - NEXT candidate: no-connect-flag discipline (`pin_not_connected` →
-    add NC flag to document intent; inverse `noconnect_connected` = NC on a
-    wired pin). Needs a small dedicated fixture WITH an intentionally-unused
-    pin (testproj uses all pins) — or pin-world-pos to inject NC on a known
-    connection. Pairs with the unused-pin family above.
+  - sweep 3 (2026-06-11, kicad.info t/46229+t/21294): no-connect-flag
+    discipline. Genuinely-unused pin → add a NC flag to silence
+    `pin_not_connected` (document intent, don't lower severity). Inverse trap
+    `no_connect_connected` (underscores — verified) = NC flag on a WIRED
+    node; delete flag or wire, not both. Lockable cold after all (no new
+    fixture): inject NC on a live junction → code appears. Shipped
+    test_nc_discipline (6/6, pure test) + skill knowledge in kicad-schematic
+    §7 & kicad-review. No new `kx` cmd: the only SOUND file-level NC check is
+    the rare NC-on-junction; the valuable one (flag MISSING NC on unused
+    pins, the `pin_not_connected` direction) needs pin-world-pos → blocked on
+    the live-IPC "pin world pos from lib cache" follow-up above.
+  - NEXT candidate (unblocked): reference annotation/uniqueness
+    (`unannotated` "R?", `duplicate_reference`). Lockable cold from testproj
+    (rewrite a Reference); probe already carries refs; multi-unit refs share
+    a designator legitimately so the check must key on (ref, unit, lib_id)
+    — reuse unit_audit's grouping. Completes the pre-flight ERC trio
+    (power / unit / reference) that front-runs the slow flatpak ERC.
