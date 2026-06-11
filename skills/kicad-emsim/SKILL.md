@@ -10,9 +10,12 @@ description: >
 # EM simulation (gerber2ems + openEMS)
 
 Engine: `~/prj/20260610_kicad-agent-skills/kicad_lib/emsim.py`.
-STATUS: experimental — docker image `gerber2ems` builds openEMS from
-source (Antmicro's pinned commit); first smoke sim gated on that build.
-Rebuild if missing: `docker build -t gerber2ems .tools/gerber2ems/`.
+STATUS: chain VALIDATED — meander_loose example simulated end-to-end
+(rc 0; |S11|≈1 + 455 ps delay on the open meander = physically correct).
+Image `gerber2ems` (6.6 GB); rebuild if missing:
+`docker build -t gerber2ems .tools/gerber2ems/`. NEVER mount over
+/home/docker — it shadows the image toolchain; emsim.run mounts at
+/home/docker/sim.
 
 ## Flow
 

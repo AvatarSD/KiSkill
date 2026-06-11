@@ -26,8 +26,8 @@
       (kx fab; 5 tests). Follow-up: jobsets + --variant passthrough.
 - [x] kicad-emsim skill + emsim.py (docker path — daemon accessible, no
       sudo): prepare() from board incl. stackup translation, dockerized
-      run(). Follow-up: smoke sim on a port-equipped board once the
-      gerber2ems image build (bk7160i3r) completes.
+      run(). Smoke sim VALIDATED (meander_loose: rc 0, physical S11).
+      Follow-up: port placement on own boards (simulation-port fps).
 - [ ] Subagent e2e: spawn subagent per skill against testproj; record
       gaps as new backlog items.
 - [ ] KiCad 11 nightly (needs sudo PPA or source build — user action);
