@@ -195,6 +195,20 @@ Float hygiene: `round(coord, 3)` everywhere — `160.02 + 7.62` produces
 - The exported **netlist is the ground truth** for connectivity: parse
   `(net (name)(node (ref)(pin)))` blocks and assert each designed net has
   exactly the expected members. Do this at least once per block.
+- **`power_pin_not_driven` ("Input power pin not driven by output power
+  pins") is a missing DRIVER DECLARATION, not a wiring fault.** Each
+  power/ground rail needs one driver: a `power_out` pin (regulator) OR a
+  `power:PWR_FLAG`. Fix by adding PWR_FLAG — NOT a ground symbol like
+  PWRGND (name trap: PWRGND is just a GND graphic; PWR_FLAG declares the
+  net driven) — at the rail's PASSIVE source (connector / battery /
+  regulator INPUT). Never flag a regulator OUTPUT (already `power_out`;
+  flagging it can trip "two outputs"). One flag per rail.
+- GOTCHA: `kicad-cli sch export netlist` **drops PWR_FLAG and power-symbol
+  nodes**, so a flagged and a flag-stripped schematic have IDENTICAL
+  netlist driver content (both zero `power_out`) — the netlist cannot see
+  this class of error. NEVER audit power drivers from the netlist; use
+  `kx power-audit FILE` (reads PWR_FLAG instances from the schematic) plus
+  kicad-cli ERC (the authority). (kicad.info t/35552, t/57016)
 
 ## 8. Visual inspection (non-negotiable)
 

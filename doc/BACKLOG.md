@@ -50,3 +50,8 @@
       from on-disk lib cache for net-aware live rules, update_items
       (move) op.
 - [ ] Forum sweep cadence: one distilled lesson per tick max into skills.
+  - sweep 1 (2026-06-11, kicad.info t/35552+t/57016): `power_pin_not_driven`
+    = missing DRIVER decl, not wiring; fix = PWR_FLAG (≠ PWRGND) at rail's
+    passive source. GOTCHA proven: netlist export DROPS PWR_FLAG nodes →
+    blind to it (ERC sees it). Shipped `kx power-audit` + test_power_audit
+    (9/9) + skill knowledge in kicad-schematic §7 & kicad-review.

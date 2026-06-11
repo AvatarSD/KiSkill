@@ -33,6 +33,19 @@ Gotchas baked into kicad_lib/diff.py — keep them if reimplementing:
   background to black and the diff goes blind.
 - ERC report lines normalize to `type @(x mm, y mm)`; set-diff both ways.
 
+## Reading common ERC codes (fix, don't just silence)
+
+- `power_pin_not_driven` — a power INPUT pin has no driver on its rail.
+  NOT a wiring bug: add `power:PWR_FLAG` at the rail's passive source
+  (connector/battery/regulator INPUT), one per rail. PWR_FLAG ≠ PWRGND
+  (the latter is only a GND graphic). `kx power-audit FILE` lists rails +
+  flag coverage. The exported netlist CANNOT detect this (it drops
+  PWR_FLAG/power nodes) — trust ERC, not a netlist driver scan.
+- `pin_not_connected` on block I/O / undriven inputs awaiting later
+  wiring = expected-benign; keep in the baseline, judge only NEW entries.
+- `missing_unit` / `missing_input_pin` — place EVERY unit of a multi-unit
+  part; tie unused opamps off (in+ → GND, in− → out).
+
 ## Rule canon — machine tier (verifier enforces)
 
 grid 1.27 mm · no diagonals · junction dots at every connection ·
