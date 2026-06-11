@@ -18,8 +18,10 @@
       DECISION: depend on kipy (.venv) instead of vendoring raw protos —
       kipy ships generated bindings and tracks upstream.
 - [x] kicad-pcb skill + pcb.py (netlist/load_footprint/stage/edge_cuts_bbox/empty_board_from), 14 tests, kicad-cli render gate. Follow-up: kx stage auto-flow (find mods in libs, grid placement).
-- [ ] kicad-layout meta-skill: schematic→board flow, freerouting DSN/SES
-      loop, DRC-gated iteration.
+- [x] kicad-layout skill + layout.py: pcbnew-python DSN/SES bridge +
+      bundled freerouting 2.2.4 (.tools, no root/java needed); e2e test
+      routes a 2-fp board (9 segments). Follow-up: placement heuristics,
+      DRC set-diff wiring, route the full testproj board.
 - [x] kicad-fab skill + fab.py: grouped BOM, JLC BOM/CPL, gerbers+drill
       (kx fab; 5 tests). Follow-up: jobsets + --variant passthrough.
 - [ ] kicad-emsim skill: gerber2ems + openEMS install path (conda-forge or

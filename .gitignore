@@ -5,3 +5,4 @@ render.png
 *.rpt
 svg_out/
 .venv/
+.tools/
