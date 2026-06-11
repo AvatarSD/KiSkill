@@ -40,6 +40,11 @@
       try eeschema-from-PM for the full handler union (1 GUI click or
       xdotool); GUI→file persistence via get_items reconstruction if
       upstream save stays missing.
-- [ ] Wire live-IPC into atomic ops: ops.py place/wire/label against the
-      IPC backend when ipc_alive (same verifier, same state machine).
+- [x] Live-IPC atomic ops: kx live snap/check/wire/junction/label/text/rm
+      (live_ops.py) — net-blind verifier gate before every push, refusal
+      sends nothing, push = one GUI undo step; tests/test_live_ops.py
+      16/16 leaves the doc as found. Follow-ups: symbol place over IPC
+      (definition is packed Any — needs unpack_any work), pin world pos
+      from on-disk lib cache for net-aware live rules, update_items
+      (move) op.
 - [ ] Forum sweep cadence: one distilled lesson per tick max into skills.

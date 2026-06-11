@@ -261,6 +261,20 @@ LOCKED then — never write it). kipy master via repo `.venv` (bootstrap:
   over IPC — the USER saves. Verify expected state on disk afterwards
   with kx probe / kx check. Full handler map: kicad-project skill.
 
+`kx live` wraps this as VERIFIED atomic ops (kicad_lib/live_ops.py,
+worked example tests/test_live_ops.py — re-execs the .venv itself):
+
+    kx live snap                   inventory + violations (mm, with ids)
+    kx live check                  geometric verifier on the live model
+    kx live wire X1 Y1 X2 Y2       verify -> push or refuse (exit 1+JSON)
+    kx live junction X Y | label X Y TEXT | text X Y TEXT
+    kx live rm ID...               remove by KIID (from snap)
+
+Net-blind gate: live backend sees wires not nets — grid/diagonal/zero/
+overlap/T-junction checked; cross-net + pin rules only at file level
+after save. A refusal sends NOTHING (GUI never sees invalid state);
+a push is exactly one GUI undo step.
+
 ## 12. Done checklist
 
 - [ ] Geometric verifier: 0 violations (and it failed when mutation-tested).
