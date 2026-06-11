@@ -24,8 +24,10 @@
       DRC set-diff wiring, route the full testproj board.
 - [x] kicad-fab skill + fab.py: grouped BOM, JLC BOM/CPL, gerbers+drill
       (kx fab; 5 tests). Follow-up: jobsets + --variant passthrough.
-- [ ] kicad-emsim skill: gerber2ems + openEMS install path (conda-forge or
-      apt), field-slice PNG feedback to agent.
+- [x] kicad-emsim skill + emsim.py (docker path — daemon accessible, no
+      sudo): prepare() from board incl. stackup translation, dockerized
+      run(). Follow-up: smoke sim on a port-equipped board once the
+      gerber2ems image build (bk7160i3r) completes.
 - [ ] Subagent e2e: spawn subagent per skill against testproj; record
       gaps as new backlog items.
 - [ ] KiCad 11 nightly (needs sudo PPA or source build — user action);
