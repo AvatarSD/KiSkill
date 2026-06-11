@@ -58,6 +58,25 @@ def stackup_from_board(pcb_path: str) -> dict:
                     ent[key] = float(v) if key in (
                         "thickness", "epsilon", "lossTangent") else v
             layers.append(ent)
+    if not layers:
+        # KiCad omits (stackup) until Board Setup customizes it —
+        # synthesize the default 2-layer 1.6 mm FR-4 stack
+        def ent(name, typ, thick=None, eps=None, tan=None, mat=None):
+            return {"name": name, "type": typ, "color": None,
+                    "thickness": thick, "material": mat, "epsilon": eps,
+                    "lossTangent": tan,
+                    "user-name": name.replace(".", "_")}
+        layers = [
+            ent("F.SilkS", "Top Silk Screen"),
+            ent("F.Paste", "Top Solder Paste"),
+            ent("F.Mask", "Top Solder Mask", 0.01),
+            ent("F.Cu", "copper", 0.035),
+            ent("dielectric 1", "core", 1.51, 4.5, 0.02, "FR4"),
+            ent("B.Cu", "copper", 0.035),
+            ent("B.Mask", "Bottom Solder Mask", 0.01),
+            ent("B.Paste", "Bottom Solder Paste"),
+            ent("B.SilkS", "Bottom Silk Screen"),
+        ]
     return {"layers": layers}
 
 
