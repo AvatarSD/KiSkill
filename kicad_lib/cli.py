@@ -3,6 +3,8 @@
 Subcommands grow with the atomic-op set (DESIGN.md §4). Today:
   kx probe FILE.kicad_sch   structured inventory of a schematic
   kx check FILE             parse + round-trip sanity (exit 1 on fail)
+  kx power-audit FILE       PWR_FLAG / power-rail driver sanity (advisory;
+                            schematic-level — netlist drops flags)
   kx diff REV FILE          triple diff (pixel/semantic/ERC) vs git REV;
                             artifacts under ~/.cache/kx_scratch
   kx index [DIR ...]        (re)build component index (incremental)
@@ -75,6 +77,38 @@ def probe(path: str) -> dict:
         ],
     }
     return out
+
+
+def power_audit(pr: dict) -> dict:
+    """Power-driver sanity from a probe dict — SCHEMATIC-level on purpose.
+
+    Forum lesson (kicad.info t/35552, t/57016): "Input power pin not driven
+    by output power pins" is never a wiring fault — it's a missing DRIVER
+    DECLARATION. Each power/ground rail needs one driver: a power_out pin
+    (regulator output) OR a PWR_FLAG. Fix by adding `power:PWR_FLAG` — NOT
+    a ground symbol like PWRGND (a name trap: PWRGND is just a GND graphic,
+    PWR_FLAG declares the net driven) — at the rail's PASSIVE source
+    (connector/battery/regulator INPUT). Do NOT flag regulator outputs.
+
+    GOTCHA this guards against: `kicad-cli sch export netlist` DROPS
+    PWR_FLAG and power-symbol-only nodes, so a rail shows power_in pins
+    with no power_out and still passes ERC. Never audit drivers from the
+    netlist; read PWR_FLAG instances from the schematic (this does).
+    Advisory only — kicad-cli ERC is the authority."""
+    power = [s for s in pr["symbols"] if s["lib_id"].startswith("power:")]
+    flags = [s for s in power if s["lib_id"] == "power:PWR_FLAG"]
+    rails = sorted({s["value"] for s in power
+                    if s["lib_id"] != "power:PWR_FLAG"})
+    return {
+        "power_rails": rails,
+        "pwr_flags": len(flags),
+        # rails with zero flags MAY still be driven by a regulator
+        # power_out pin — hence "possibly", not "definitely"
+        "possibly_undriven": rails if not flags else [],
+        "note": ("run kicad-cli ERC for the authoritative check; a flagged "
+                 "rail here means a PWR_FLAG exists, not that it sits on "
+                 "the right net"),
+    }
 
 
 def check(path: str) -> bool:
@@ -187,6 +221,10 @@ def main(argv: list[str] | None = None) -> int:
         ok = check(path)
         print("OK" if ok else "FAIL", path)
         return 0 if ok else 1
+    if cmd == "power-audit":
+        json.dump(power_audit(probe(path)), sys.stdout, indent=1)
+        print()
+        return 0
     if cmd == "diff" and len(argv) >= 3:
         json.dump(diff_rev(argv[1], argv[2]), sys.stdout, indent=1)
         print()
