@@ -5,6 +5,8 @@ Subcommands grow with the atomic-op set (DESIGN.md §4). Today:
   kx check FILE             parse + round-trip sanity (exit 1 on fail)
   kx power-audit FILE       PWR_FLAG / power-rail driver sanity (advisory;
                             schematic-level — netlist drops flags)
+  kx unit-audit FILE        multi-unit part completeness — every unit of a
+                            dual/quad part placed? (advisory; ERC authority)
   kx diff REV FILE          triple diff (pixel/semantic/ERC) vs git REV;
                             artifacts under ~/.cache/kx_scratch
   kx index [DIR ...]        (re)build component index (incremental)
@@ -44,6 +46,24 @@ def _sym_summary(s: list) -> dict:
     }
 
 
+def _lib_unit_count(libsym: list) -> int:
+    """Units in a lib_symbols entry. Child sub-symbols are named
+    `<item>_<unit>_<style>` (item = the part after the ':' in the lib name,
+    which may itself hold '_' and digits — anchor on it, don't split blind).
+    Unit 0 is the shared/common graphic, not a real unit; the count is the
+    highest real unit id (KiCad unit ids are contiguous 1..N)."""
+    item = sexp.atoms(libsym)[0].split(":")[-1]
+    units = set()
+    for sub in sexp.find_all(libsym, "symbol"):
+        name = sexp.atoms(sub)[0]
+        if name.startswith(item + "_"):
+            head = name[len(item) + 1:].split("_", 1)[0]
+            if head.isdigit():
+                units.add(int(head))
+    real = {u for u in units if u >= 1}
+    return max(real) if real else 1
+
+
 def probe(path: str) -> dict:
     root = sexp.load_file(path)
     body = {t: list(sexp.find_all(root, t)) for t in (
@@ -59,6 +79,10 @@ def probe(path: str) -> dict:
         "lib_symbols_cached": [
             sexp.atoms(s)[0] for s in sexp.find_all(libs, "symbol")
         ] if libs else [],
+        "lib_unit_counts": {
+            sexp.atoms(s)[0]: _lib_unit_count(s)
+            for s in sexp.find_all(libs, "symbol")
+        } if libs else {},
         "counts": {k: len(v) for k, v in body.items()},
         "symbols": [_sym_summary(s) for s in body["symbol"]],
         "labels": sorted({
@@ -108,6 +132,47 @@ def power_audit(pr: dict) -> dict:
         "note": ("run kicad-cli ERC for the authoritative check; a flagged "
                  "rail here means a PWR_FLAG exists, not that it sits on "
                  "the right net"),
+    }
+
+
+def unit_audit(pr: dict) -> dict:
+    """Multi-unit completeness from a probe dict — SCHEMATIC-level.
+
+    Forum lesson (kicad.info; KLC S4.5): every unit of a multi-unit part
+    (dual/quad opamps, logic gate packs) must be placed. KiCad ERC raises
+    `missing_unit` for an absent unit and `missing_input_pin` for its
+    dangling inputs. A SPARE unit you don't use still has to sit on a sheet
+    AND be tied off (opamp: in+ -> GND, in- -> out; logic: inputs to a
+    defined level) or ERC flags it. This groups placed `(unit N)` instances
+    by reference designator and compares against the part's unit count from
+    lib_symbols, catching the gap before a flatpak ERC round-trip. Advisory
+    — kicad-cli ERC (missing_unit) is the authority, and it alone can judge
+    whether a placed spare unit is actually tied off."""
+    counts = pr.get("lib_unit_counts", {})
+    parts: dict[str, dict] = {}
+    for s in pr["symbols"]:
+        n = counts.get(s["lib_id"], 1)
+        if n <= 1:
+            continue  # single-unit part: nothing to complete
+        p = parts.setdefault(s["ref"], {"lib_id": s["lib_id"],
+                                        "units_expected": n, "seen": set()})
+        p["seen"].add(s["unit"])
+    report = {}
+    for ref, p in sorted(parts.items()):
+        missing = [u for u in range(1, p["units_expected"] + 1)
+                   if u not in p["seen"]]
+        report[ref] = {
+            "lib_id": p["lib_id"],
+            "units_placed": sorted(p["seen"]),
+            "units_expected": p["units_expected"],
+            "missing": missing,
+        }
+    return {
+        "multi_unit_parts": report,
+        "incomplete": [r for r, v in report.items() if v["missing"]],
+        "note": ("run kicad-cli ERC for the authority (missing_unit / "
+                 "missing_input_pin); a placed spare unit still needs its "
+                 "inputs tied off — this check cannot verify that"),
     }
 
 
@@ -223,6 +288,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if ok else 1
     if cmd == "power-audit":
         json.dump(power_audit(probe(path)), sys.stdout, indent=1)
+        print()
+        return 0
+    if cmd == "unit-audit":
+        json.dump(unit_audit(probe(path)), sys.stdout, indent=1)
         print()
         return 0
     if cmd == "diff" and len(argv) >= 3:
