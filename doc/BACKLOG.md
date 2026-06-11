@@ -17,7 +17,7 @@
 - [x] live.py adapter (file | ipc | headless) + kx env detection.
       DECISION: depend on kipy (.venv) instead of vendoring raw protos —
       kipy ships generated bindings and tracks upstream.
-- [ ] kicad-pcb skill: port SKILL.md §10 footprint staging onto kicad_lib.
+- [x] kicad-pcb skill + pcb.py (netlist/load_footprint/stage/edge_cuts_bbox/empty_board_from), 14 tests, kicad-cli render gate. Follow-up: kx stage auto-flow (find mods in libs, grid placement).
 - [ ] kicad-layout meta-skill: schematic→board flow, freerouting DSN/SES
       loop, DRC-gated iteration.
 - [ ] kicad-fab skill: BOM (grouped, JLC/LCSC columns), gerbers, pos,
