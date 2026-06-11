@@ -36,7 +36,8 @@ Engine: `~/prj/20260610_kicad-agent-skills/kicad_lib/pcb.py`
   layer stack + setup + net 0) from any existing .kicad_pcb, read-only.
 - DRC: `kicad-cli pcb drc --output drc.rpt --severity-all BOARD` —
   set-diff vs baseline exactly like ERC (kicad-review skill).
-- .kicad_pcb round-trips token-equal but NOT yet byte-identical
-  (pcbnew formatter rules pending) — do not hand-edit boards expecting
-  zero-noise diffs yet.
+- .kicad_pcb round-trips BYTE-IDENTICAL (validated on a 2.3 MB real
+  board): pcb pts dialect (≤5 points inline, then 4-per-line chunks) +
+  token wrap at column 72 — sexp.dumps sniffs the root tag, or pass
+  dialect="pcb" when serializing subtrees. Hand-edits diff zero-noise.
 - Update-PCB direction is sch→pcb only; never edit refs on the board.

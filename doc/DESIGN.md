@@ -10,7 +10,9 @@ flowing back to the agent at every step.
 kicad_lib/
   sexp.py     lossless quote-aware s-expression parse/serialize (own impl;
               kiutils' fixed dataclass schema breaks on new format versions,
-              kicad-skip is REPL-oriented; we need format-version tolerance)
+              kicad-skip is REPL-oriented; we need format-version tolerance);
+              byte-identical for sch/sym/mod AND pcb (two pts dialects +
+              col-72 token wrap, mirrors KiCad's shared prettifier)
   geom.py     1.27 mm grid, rotation/mirror math, pin world positions
   (model.py was folded into cli.probe + sexp helpers — no module)
   verify.py   geometric verifier — hard rules, run before every write
