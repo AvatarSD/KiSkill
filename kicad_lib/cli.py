@@ -7,6 +7,8 @@ Subcommands grow with the atomic-op set (DESIGN.md §4). Today:
                             schematic-level — netlist drops flags)
   kx unit-audit FILE        multi-unit part completeness — every unit of a
                             dual/quad part placed? (advisory; ERC authority)
+  kx ref-audit FILE         reference uniqueness + annotation (kicad-cli ERC
+                            is BLIND to dup/unannotated refs — this isn't)
   kx diff REV FILE          triple diff (pixel/semantic/ERC) vs git REV;
                             artifacts under ~/.cache/kx_scratch
   kx index [DIR ...]        (re)build component index (incremental)
@@ -176,6 +178,42 @@ def unit_audit(pr: dict) -> dict:
     }
 
 
+def ref_audit(pr: dict) -> dict:
+    """Reference annotation + uniqueness from a probe dict — SCHEMATIC-level.
+
+    GOTCHA this guards (proven in test_ref_audit): `kicad-cli sch erc` does
+    NOT report duplicate reference designators OR unannotated symbols (a
+    designator ending in '?'), even at --severity-all. Those are Annotation-
+    tool checks (SCH_REFERENCE_LIST), not ERC violations — a headless ERC
+    pass stays 0/0 green while two R1s silently cross-merge in the netlist.
+    This fills the hole by reading refs straight from the schematic; ERC
+    cannot, so never trust a headless ERC pass for annotation correctness.
+
+    Multi-unit parts legitimately SHARE a base designator across distinct
+    units (U1A/U1B/U1C all read 'U1'), so a ref is a TRUE duplicate only if
+    a unit number repeats within it or two different lib_ids claim it.
+    Advisory — the GUI Annotate dialog (or this) is the authority, not ERC."""
+    groups: dict[str, list] = {}
+    for s in pr["symbols"]:
+        groups.setdefault(s["ref"], []).append((s["unit"], s["lib_id"]))
+    duplicates = {}
+    for ref, members in groups.items():
+        units = [u for u, _ in members]
+        libs = sorted({lib for _, lib in members})
+        if len(units) != len(set(units)) or len(libs) > 1:
+            duplicates[ref] = {"instances": len(members),
+                               "units": sorted(units), "lib_ids": libs}
+    unannotated = sorted(r for r in groups if "?" in r)
+    return {
+        "duplicates": duplicates,
+        "unannotated": unannotated,
+        "clean": not duplicates and not unannotated,
+        "note": ("kicad-cli ERC does NOT catch these (annotation-tool checks, "
+                 "not ERC) — verify here or via the GUI Annotate dialog, "
+                 "never via a headless ERC pass"),
+    }
+
+
 def check(path: str) -> bool:
     text = open(path, encoding="utf-8").read()
     tree = sexp.parse(text)
@@ -292,6 +330,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if cmd == "unit-audit":
         json.dump(unit_audit(probe(path)), sys.stdout, indent=1)
+        print()
+        return 0
+    if cmd == "ref-audit":
+        json.dump(ref_audit(probe(path)), sys.stdout, indent=1)
         print()
         return 0
     if cmd == "diff" and len(argv) >= 3:
