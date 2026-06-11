@@ -20,8 +20,8 @@
 - [x] kicad-pcb skill + pcb.py (netlist/load_footprint/stage/edge_cuts_bbox/empty_board_from), 14 tests, kicad-cli render gate. Follow-up: kx stage auto-flow (find mods in libs, grid placement).
 - [ ] kicad-layout meta-skill: schematic→board flow, freerouting DSN/SES
       loop, DRC-gated iteration.
-- [ ] kicad-fab skill: BOM (grouped, JLC/LCSC columns), gerbers, pos,
-      jobsets via kicad-cli.
+- [x] kicad-fab skill + fab.py: grouped BOM, JLC BOM/CPL, gerbers+drill
+      (kx fab; 5 tests). Follow-up: jobsets + --variant passthrough.
 - [ ] kicad-emsim skill: gerber2ems + openEMS install path (conda-forge or
       apt), field-slice PNG feedback to agent.
 - [ ] Subagent e2e: spawn subagent per skill against testproj; record

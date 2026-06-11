@@ -10,6 +10,7 @@ Subcommands grow with the atomic-op set (DESIGN.md §4). Today:
   kx fetch LCSC_ID PROJ     download symbol+fp+3D, register lib tables
   kx import-zip ZIP PROJ    import SnapEDA/UltraLibrarian zip, register
   kx env [PROJECT_DIR]      backend detection: file/ipc/headless, locks
+  kx fab SCH|- PCB|- OUTDIR fab bundle: BOM + JLC BOM/CPL + gerbers+drill
 """
 
 from __future__ import annotations
@@ -142,6 +143,13 @@ def main(argv: list[str] | None = None) -> int:
         from . import live
         json.dump(live.detect(argv[1] if len(argv) > 1 else None),
                   sys.stdout, indent=1)
+        print()
+        return 0
+    if argv[0] == "fab" and len(argv) >= 4:
+        from . import fab
+        json.dump(fab.bundle(None if argv[1] == "-" else argv[1],
+                             None if argv[2] == "-" else argv[2],
+                             argv[3]), sys.stdout, indent=1)
         print()
         return 0
     if len(argv) < 2:
