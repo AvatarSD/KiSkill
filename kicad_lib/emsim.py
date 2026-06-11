@@ -100,9 +100,11 @@ def prepare(pcb_path: str, workdir: str) -> dict:
 def run(workdir: str, export_field: bool = False,
         timeout_s: int = 3600) -> dict:
     """Run the dockerized pipeline: geometry → FDTD sim → postprocess."""
+    # mount at a SUBPATH — mounting over /home/docker would shadow the
+    # image's ~/.local/bin and the openEMS venv (entrypoint vanishes)
     args = ["docker", "run", "--rm", "-v",
-            f"{pathlib.Path(workdir).resolve()}:/home/docker",
-            IMAGE, "-a"]
+            f"{pathlib.Path(workdir).resolve()}:/home/docker/sim",
+            "-w", "/home/docker/sim", IMAGE, "-a"]
     if export_field:
         args.append("--export-field")
     r = subprocess.run(args, capture_output=True, text=True,
