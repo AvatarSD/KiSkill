@@ -55,3 +55,15 @@
     passive source. GOTCHA proven: netlist export DROPS PWR_FLAG nodes →
     blind to it (ERC sees it). Shipped `kx power-audit` + test_power_audit
     (9/9) + skill knowledge in kicad-schematic §7 & kicad-review.
+  - sweep 2 (2026-06-11, kicad.info unused-pin threads + KLC S4.5):
+    multi-unit completeness — every unit of a dual/quad part must be placed,
+    a spare still needs tie-off, else ERC `missing_unit`/`missing_input_pin`.
+    Lockable cold from the existing testproj MCP6002 (dual opamp, 3 units).
+    Shipped `kx unit-audit` (probe lib_unit_counts + per-ref placed-vs-
+    expected) + test_unit_audit (11/11, audit agrees with ERC) + skill
+    knowledge in kicad-schematic §7 & kicad-review.
+  - NEXT candidate: no-connect-flag discipline (`pin_not_connected` →
+    add NC flag to document intent; inverse `noconnect_connected` = NC on a
+    wired pin). Needs a small dedicated fixture WITH an intentionally-unused
+    pin (testproj uses all pins) — or pin-world-pos to inject NC on a known
+    connection. Pairs with the unused-pin family above.

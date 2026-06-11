@@ -190,8 +190,13 @@ Float hygiene: `round(coord, 3)` everywhere — `160.02 + 7.62` produces
   entries; report regrouping moves pre-existing items around.
 - Expected-benign classes: `isolated_pin_label` on block I/O, undriven
   inputs awaiting later wiring, pre-existing unwired-MCU noise.
-- `missing_unit`/`missing_input_pin` warnings: EVERY unit of a multi-unit
-  part must be placed — tie unused opamps off (in+ → GND, in− → out).
+- `missing_unit`/`missing_input_pin`: EVERY unit of a multi-unit part
+  (dual/quad opamp, gate pack) must be placed, AND a spare you don't use
+  still goes on a sheet + tied off (opamp: in+ → GND, in− → out; logic:
+  inputs to a defined level) or its inputs throw `missing_input_pin`.
+  `kx unit-audit FILE` lists placed-vs-expected units per ref (reads the
+  count from lib_symbols) and front-runs ERC; ERC is the authority on
+  tie-off. (kicad.info unused-pin threads; KLC S4.5)
 - The exported **netlist is the ground truth** for connectivity: parse
   `(net (name)(node (ref)(pin)))` blocks and assert each designed net has
   exactly the expected members. Do this at least once per block.

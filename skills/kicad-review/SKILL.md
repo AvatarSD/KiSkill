@@ -43,8 +43,13 @@ Gotchas baked into kicad_lib/diff.py — keep them if reimplementing:
   PWR_FLAG/power nodes) — trust ERC, not a netlist driver scan.
 - `pin_not_connected` on block I/O / undriven inputs awaiting later
   wiring = expected-benign; keep in the baseline, judge only NEW entries.
-- `missing_unit` / `missing_input_pin` — place EVERY unit of a multi-unit
-  part; tie unused opamps off (in+ → GND, in− → out).
+- `missing_unit` / `missing_input_pin` — a multi-unit part (dual/quad opamp,
+  logic-gate pack) has an unplaced unit. Place EVERY unit; a SPARE you don't
+  use still goes on a sheet AND gets tied off (opamp: in+ → GND, in− → out;
+  logic: inputs to a defined level) or its inputs throw `missing_input_pin`.
+  `kx unit-audit FILE` lists each multi-unit ref's placed-vs-expected units
+  and front-runs ERC (it agrees on `missing_unit`); ERC stays the authority
+  for whether a placed spare is actually tied off.
 
 ## Rule canon — machine tier (verifier enforces)
 
