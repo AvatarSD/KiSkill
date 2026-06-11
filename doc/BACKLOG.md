@@ -49,6 +49,56 @@
       (definition is packed Any — needs unpack_any work), pin world pos
       from on-disk lib cache for net-aware live rules, update_items
       (move) op.
+- [ ] netmodel: file-level net model extraction. Parse .kicad_sch +
+      embedded lib_symbols → Seg/Pin/junction with REAL nets (pin_world
+      over each instance's at/rot/mirror; stitch nets via labels/power
+      symbols/wire connectivity) → `kx verify FILE` runs the geometric
+      verifier against the FILE ON DISK. Today verify() is reachable only
+      from live_ops (net-blind) and tests (hand-built models) — the
+      VERIFIED state is unenforceable from disk; an agent editing sexp
+      directly gets no machine gate until ERC. Unblocks: the missing-NC
+      audit (sweep-3 blocker "pin world pos from lib cache"), junction
+      audit on real files, the "netlist members == design intent" canon
+      check. All data is in-file (lib_symbols cache embedded).
+- [ ] kx write-op CLI surface (place/wire/label/junction/set-prop/
+      delete-ref) with the live_ops contract applied to files: build →
+      netmodel verify → roundtrip token gate → atomic save (tmp+rename);
+      refusal writes NOTHING. Single-command reliable edits, no
+      agent-written Python required. Depends on netmodel above.
+- [ ] kicad-cli resolver: KX_KICAD_CLI env → native `kicad-cli` on PATH →
+      nightly wrapper → flatpak; ONE function shared by diff/fab/pcb/
+      emsim (today each hardcodes the flatpak invocation; live.py already
+      detects but nobody consumes it). Same for index.OFFICIAL → also try
+      /usr/share/kicad/symbols. Most users have native KiCad — first-run
+      experience for every cloner depends on this.
+- [ ] extends-resolution in ops.extract_libdef — official libs are mostly
+      derived symbols (opamp/regulator families); place() refuses them
+      today. index._scan_lib already inherits base fields; port the
+      flatten so a derived symbol pulls its base's body+pins, renamed.
+- [ ] fail-loud + fresh-scratch discipline in diff.py/pcb.py: check every
+      subprocess returncode; unique per-run scratch dirs; delete stale
+      .rpt/svg before each run. PROVEN hazard: erc_report reuses
+      erc_{tag}.rpt and render_png reuses svg_{stem}_{hash}/ — a failed
+      kicad-cli run silently re-parses the PREVIOUS revision's artifact,
+      poisoning the ERC set-diff / pixel diff with stale evidence.
+- [ ] ERC via `kicad-cli sch erc --format json` instead of .rpt regex —
+      stable schema, carries severity/sheet/exclusions; the .rpt regex
+      drops multi-line items and locale variations. Pairs with the
+      ignored-checks sweep candidate below.
+- [ ] geom completeness: rot_xy supports only mirror "x" at rot 0 —
+      real boards mirror at any rotation and mirror "y"; the file
+      verifier (netmodel) will mis-place pins on those symbols. Also
+      widen verify._norm power-merge beyond GND*/VCC* prefixes
+      (VDD/VSS/+3V3/+5V/VBUS/AVDD…) — better: merge by the power-symbol
+      set found in the doc, not name heuristics.
+- [ ] multi-sheet awareness: diff.render_png renders svgs[0] only —
+      hierarchical designs pixel-diff just the root sheet; iterate all
+      exported SVGs, one composite per sheet. semantic_diff/probe per
+      sheet file; ops has no add_sheet/hier-label builders at all.
+- [ ] CI (GitHub Actions): pure-python tests on every push (roundtrip,
+      verify, ops, diff-semantic, audits — all pass tool-free today);
+      kicad-dependent tests already skip cleanly. Public repo now;
+      contributors need the gate CONTRIBUTING.md promises.
 - [ ] Forum sweep cadence: one distilled lesson per tick max into skills.
   - sweep 1 (2026-06-11, kicad.info t/35552+t/57016): `power_pin_not_driven`
     = missing DRIVER decl, not wiring; fix = PWR_FLAG (≠ PWRGND) at rail's
