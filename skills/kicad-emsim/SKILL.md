@@ -9,11 +9,11 @@ description: >
 
 # EM simulation (gerber2ems + openEMS)
 
-Engine: `~/prj/20260610_kicad-agent-skills/kicad_lib/emsim.py`.
+Engine: `$(kx root)/kicad_lib/emsim.py`.
 STATUS: chain VALIDATED — meander_loose example simulated end-to-end
 (rc 0; |S11|≈1 + 455 ps delay on the open meander = physically correct).
 Image `gerber2ems` (6.6 GB); rebuild if missing:
-`docker build -t gerber2ems ~/prj/20260610_kicad-agent-skills/.tools/gerber2ems/`. NEVER mount over
+`docker build -t gerber2ems $(kx root)/.tools/gerber2ems/`. NEVER mount over
 /home/docker — it shadows the image toolchain; emsim.run mounts at
 /home/docker/sim.
 

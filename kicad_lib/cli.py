@@ -2,6 +2,8 @@
 
 Subcommands grow with the atomic-op set (DESIGN.md §4). Today:
   kx probe FILE.kicad_sch   structured inventory of a schematic
+  kx root                   print the repo root (anchor for PYTHONPATH /
+                            engine source paths; kx itself is on PATH)
   kx check FILE             parse + round-trip sanity (exit 1 on fail)
   kx power-audit FILE       PWR_FLAG / power-rail driver sanity (advisory;
                             schematic-level — netlist drops flags)
@@ -262,6 +264,12 @@ def main(argv: list[str] | None = None) -> int:
     if not argv:
         print(__doc__)
         return 2
+    if argv[0] == "root":
+        # repo root = parent of this package — location-independent anchor
+        # for skills (set PYTHONPATH here, or read engine sources here).
+        import pathlib
+        print(pathlib.Path(__file__).resolve().parents[1])
+        return 0
     if argv[0] == "index":
         from . import index
         json.dump(index.build(argv[1:]), sys.stdout, indent=1)

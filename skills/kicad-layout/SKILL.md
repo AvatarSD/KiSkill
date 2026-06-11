@@ -8,7 +8,7 @@ description: >
 
 # Headless layout / autorouting
 
-Engine: `~/prj/20260610_kicad-agent-skills/kicad_lib/layout.py`
+Engine: `$(kx root)/kicad_lib/layout.py`
 (python API: PYTHONPATH=<repo>; any freerouting-*-linux-x64 in .tools
 is auto-detected, newest wins).
 Worked end-to-end example: `tests/test_layout.py` (scratch board with

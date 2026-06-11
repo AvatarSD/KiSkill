@@ -78,11 +78,11 @@ def main() -> int:
     for p in extras:
         # argv extras may come from other generators (easyeda2kicad…)
         ok &= roundtrip(p)
-    # byte-identity soak on a REAL pcbnew-saved board (read-only donor)
-    donor = pathlib.Path(os.environ.get("KX_DONOR_PCB", (
-        "/home/sd/prj/20250713_ig-smartgrow/gorshok/smartgrow-gorshok/"
-        "hat/strawberry_1170-hat/strawberry_1170-hat.kicad_pcb")))
-    if donor.exists():
+    # byte-identity soak on a REAL pcbnew-saved board (read-only donor).
+    # Point KX_DONOR_PCB at any large board you have locally.
+    donor_env = os.environ.get("KX_DONOR_PCB", "")
+    donor = pathlib.Path(donor_env) if donor_env else None
+    if donor and donor.exists():
         ok &= roundtrip(donor, require_bytes=True)
     else:
         print("note: donor pcb missing — set KX_DONOR_PCB for the soak")

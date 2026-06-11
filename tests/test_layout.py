@@ -15,10 +15,8 @@ from kicad_lib import layout, pcb, sexp  # noqa: E402
 from kicad_lib.sexp import Sym, QStr  # noqa: E402
 
 HERE = pathlib.Path(__file__).resolve().parent
-DONOR = os.environ.get("KX_DONOR_PCB", (
-    "/home/sd/prj/20250713_ig-smartgrow/gorshok/smartgrow-gorshok/"
-    "hat/strawberry_1170-hat/strawberry_1170-hat.kicad_pcb"))
-if not pathlib.Path(DONOR).exists():
+DONOR = os.environ.get("KX_DONOR_PCB", "")
+if not DONOR or not pathlib.Path(DONOR).exists():
     print("SKIP: donor board missing — set KX_DONOR_PCB to any .kicad_pcb")
     raise SystemExit(0)
 FAILS = []

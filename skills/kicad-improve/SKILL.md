@@ -9,12 +9,12 @@ description: >
 
 # Self-improvement loop (one tick = one slice)
 
-Repo: `~/prj/20260610_kicad-agent-skills`. Never test against real user
+Repo: `$(kx root)`. Never test against real user
 projects (read-only soak targets only); use `tests/fixtures/`.
 
 ## Tick protocol
 
-1. `git -C ~/prj/20260610_kicad-agent-skills log --oneline | head` +
+1. `git -C $(kx root) log --oneline | head` +
    read `doc/BACKLOG.md` — pick the TOP unchecked item only.
 2. If the item needs domain knowledge: ONE focused forum/web sweep
    (kicad.info, EEVblog, Hackaday, official dev-docs — WebSearch/WebFetch

@@ -12,7 +12,7 @@ description: >
 
 ## Triple diff (vs git baseline)
 
-**Implemented:** `cd ~/prj/20260610_kicad-agent-skills && python3 -m
+**Implemented:** `cd $(kx root) && python3 -m
 kicad_lib.cli diff REV /abs/path/FILE.kicad_sch` → JSON with `semantic`
 (symbols added/removed/moved/changed, labels, count deltas), `pixel`
 (changed_px + bbox_mm + composite path), `erc_new`/`erc_gone`. Artifacts

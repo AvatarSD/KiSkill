@@ -9,7 +9,7 @@ description: >
 
 # Fabrication outputs
 
-Engine: `~/prj/20260610_kicad-agent-skills/kicad_lib/fab.py`. One call:
+Engine: `$(kx root)/kicad_lib/fab.py`. One call:
 
     python3 -m kicad_lib.cli fab SCH PCB OUTDIR     # either may be "-"
 

@@ -12,7 +12,7 @@ description: >
 
 # KiCad schematic generation
 
-**Engine:** `~/prj/20260610_kicad-agent-skills/kicad_lib/` — lossless sexp
+**Engine:** `$(kx root)/kicad_lib/` — lossless sexp
 parser (`sexp.py`, token-equal round-trip proven on 2.3 MB boards; byte-identity only for .kicad_mod — sch re-serializes with ~0.5% whitespace drift) and the
 `kx` CLI (`python3 -m kicad_lib.cli probe|check FILE` from the repo root).
 Prefer `kx probe` over ad-hoc grep for inventory; prefer `sexp.py` over
@@ -23,15 +23,17 @@ kicad-component (find/fetch parts), kicad-review (diff/ERC), kicad-improve
 (self-improvement loop). Design: `doc/DESIGN.md` in that repo.
 
 Battle-tested workflow for writing `.kicad_sch`/`.kicad_pcb` files from
-Python without KiCad GUI. Reference implementations (ig-smartgrow repo):
+Python without KiCad GUI. The engine and worked examples ship in this repo
+(`kx root`):
 
-- `gorshok/hiside-sim/hiside-kicad/gen_hiside_kicad.py` — standalone sheet,
-  scaffold symbols, full-wire layout, built-in geometric verifier.
-- `gorshok/hiside-sim/kicad-gen/inject_hat_hiside.py` — inject a block into
-  an EXISTING schematic using real library symbols (extends-flattening,
-  multi-unit LM393, mirrors), label-stitched islands.
-- `gorshok/hiside-sim/kicad-gen/inject_hat_pcb.py` — stage footprints in the
-  PCB, path-linked to schematic symbols so Update-PCB adopts them.
+- `kicad_lib/ops.py` — standalone sheet, scaffold symbols, full-wire
+  layout, driven by the built-in geometric verifier (`kicad_lib/verify.py`).
+- `kicad_lib/live_ops.py` — inject a block into an EXISTING schematic using
+  real library symbols (extends-flattening, multi-unit parts, mirrors),
+  label-stitched islands.
+- `kicad_lib/pcb.py` — stage footprints in the PCB, path-linked to
+  schematic symbols so Update-PCB adopts them. See `tests/test_*.py` for
+  runnable end-to-end usage against `tests/fixtures/`.
 
 ## 0. The loop (never skip a stage)
 

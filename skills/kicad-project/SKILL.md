@@ -9,7 +9,7 @@ description: >
 
 # KiCad project state machine
 
-Repo: `~/prj/20260610_kicad-agent-skills` (engine + design docs).
+Repo: `$(kx root)` (engine + design docs).
 
 ## Session entry protocol (always)
 
@@ -20,7 +20,7 @@ Repo: `~/prj/20260610_kicad-agent-skills` (engine + design docs).
    work on a scratch copy.
    `kx` = ~/.local/bin/kx → repo bin/kx (self-sets PYTHONPATH; works
    from any cwd). Python API instead: run with
-   PYTHONPATH=~/prj/20260610_kicad-agent-skills (no pip install).
+   PYTHONPATH=$(kx root) (no pip install).
 2. Git: checkpoint-commit the project BEFORE the first modification.
 3. `kx probe FILE` — inventory (uuid, paper, symbols/refs, labels,
    sheets, cached libs).
