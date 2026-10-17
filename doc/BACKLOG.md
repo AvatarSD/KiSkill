@@ -88,10 +88,15 @@
       stable schema, carries severity/sheet/exclusions; the .rpt regex
       drops multi-line items and locale variations. Pairs with the
       ignored-checks sweep candidate below.
-- [ ] geom completeness: rot_xy supports only mirror "x" at rot 0 —
-      real boards mirror at any rotation and mirror "y"; the file
-      verifier (netmodel) will mis-place pins on those symbols. Also
-      widen verify._norm power-merge beyond GND*/VCC* prefixes
+- [x] regen.py: round-trip for generated schematics (snapshot sidecars,
+      absorb GUI edits into overrides.json or refuse, netlist gate,
+      `kx regen`); test_regen 29/29 incl. KiCad re-save. Follow-ups:
+      deterministic symbol uuids in generators (uuid5 of sheet+ref+unit)
+      so a regenerated schematic keeps its PCB footprint links; absorb
+      sheet-pin moves and label moves of unmoved symbols (refused today).
+- [ ] geom completeness: rot_xy mirror order FIXED (rotate, then mirror
+      in world axes — proven by netlist at rot 90, both mirrors). Still
+      open: widen verify._norm power-merge beyond GND*/VCC* prefixes
       (VDD/VSS/+3V3/+5V/VBUS/AVDD…) — better: merge by the power-symbol
       set found in the doc, not name heuristics.
 - [ ] multi-sheet awareness: diff.render_png renders svgs[0] only —

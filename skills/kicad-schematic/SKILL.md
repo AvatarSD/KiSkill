@@ -94,14 +94,15 @@ wires will not connect.
 Pin world position for a symbol at `(x, y, rot)`, lib pin offset `(u, v)`:
 
 ```python
-def rot_xy(u, v, rot, mirror=""):
-    if mirror == "x": v = -v        # use mirror only with rot 0 (unambiguous)
-    if rot == 0:   return (u, -v)
-    if rot == 90:  return (-v, -u)
-    if rot == 180: return (-u, v)
-    if rot == 270: return (v, u)
+def rot_xy(u, v, rot, mirror=""):        # = kicad_lib.geom.rot_xy
+    x, y = {0: (u, -v), 90: (-v, -u), 180: (-u, v), 270: (v, u)}[rot]
+    if mirror == "x": y = -y            # mirror AFTER rotation, in WORLD axes
+    if mirror == "y": x = -x            # (proven vs a kicad-cli netlist)
+    return (x, y)
 # world = (x + dx, y + dy)
 ```
+
+KiCad may re-save `rot 90 + mirror y` as the equivalent `rot 270 + mirror x`.
 
 - `Device:R` is **vertical** at rot 0 (pin1 top); rot 90 → pin1 left.
 - KiCad PNPs draw emitter at bottom; `(mirror x)` flips it up (idiomatic).
@@ -309,7 +310,35 @@ overlap/T-junction checked; cross-net + pin rules only at file level
 after save. A refusal sends NOTHING (GUI never sees invalid state);
 a push is exactly one GUI undo step.
 
-## 12. Done checklist
+## 12. Generated schematics: hand edits survive regeneration
+
+A gen script that rewrites `.kicad_sch` wipes the operator's GUI edits.
+`kicad_lib/regen.py` (`kx regen`) closes the loop — wire it into the
+script's build entry point:
+
+1. `Session(project_dir, snap_dir, overrides.json)`; `guard_locks()`
+   refuses while KiCad has `~*.lck` files.
+2. `absorb(sheets)` diffs each sheet against its snapshot sidecar.
+   Absorbed into `overrides.json`: symbol move/rotate/mirror, field
+   move/hide/justify, value/footprint/property change/add/remove, flags
+   (DNP, in_bom, ...), text-note and sheet-block moves. Re-hung (no
+   loss): stubs/labels of a moved symbol, drag segments. Anything else
+   (added wire/label/part, deleted part, renamed label, a power symbol's
+   value) raises `Refused` and nothing is written; `force=True` discards
+   those (listed) and still absorbs the rest.
+3. The generator asks `overrides.symbol(sheet, "REF/UNIT")`, places at
+   `geometry(ov)` BEFORE hanging stubs, then `apply_symbol(node, ov)`;
+   records item owners (uuid → "REF/UNIT") and `sym_state()` of the
+   script's own node as base; `snapshot()` after each save.
+4. `connectivity(root)` diffs the kicad-cli netlist against the last one —
+   must be unchanged when only overrides were absorbed. `report()` lists
+   value/footprint/DNP overrides as "move into the gen script" (the
+   override prunes itself once the script says the same).
+
+Bootstrap the first snapshots only from pristine (git-clean) generator
+output. CLI: `kx regen status|absorb DIR SNAPDIR OVERRIDES [--force]`.
+
+## 13. Done checklist
 
 - [ ] Geometric verifier: 0 violations (and it failed when mutation-tested).
 - [ ] ERC set-diff vs baseline: no unexplained NEW entries.
