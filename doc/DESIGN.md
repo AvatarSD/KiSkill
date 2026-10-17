@@ -22,11 +22,20 @@ kicad_lib/
   diff.py     triple diff: pixel (render A/B → red/green composite),
               semantic (tree diff: symbols/nets added/moved/removed),
               ERC set-diff vs baseline
-  live.py     backend adapter: file (KiCad ≤10 sch, lock-file aware) |
+  live.py     backend adapter: file (KiCad ≤10 sch, lock-file aware;
+              refuses .kicad_pcb writes under a GUI lock) |
               kipy IPC (pcb @ KiCad 9+, sch @ KiCad 11+) | kipy headless
   regen.py    round-trip for GENERATED schematics: per-sheet snapshot
               sidecars, diff vs disk → absorb GUI edits into overrides
               (or refuse), netlist connectivity gate
+  ipc_discovery.py  stdlib socket + api.enable_server discovery; also
+              piped to `ssh H python3 -` for the remote side
+  live_ops.py live schematic ops (v11) + committed(): one undo step
+  live_pcb.py live board ops (summary/move/rotate/flip/place/show/
+              refill/undo/save), validate → commit → read back
+  live_remote.py  ssh unix-socket forward to a GUI on another host
+  live_headless.py  Xvfb + flatpak pcbnew for tests (KiCad 10 has no
+              GUI-less API server)
   cli.py      `kx` entry point
 ```
 
@@ -100,6 +109,16 @@ saves; tests/test_live_ipc.py re-maps the gap on every run. kipy from
 PyPI is broken for schematics; tools/bootstrap_kipy.sh builds master
 (.tools/kicad-python + protoc 29.x + protol + .pth). Do NOT fork/patch
 KiCad C++ — consume the nightly (apt PPA `ppa:kicad/kicad-dev-nightly`).
+
+Board IPC on KiCad 10.0.7 (flatpak, kipy 0.8.0 = API 10.0.6) VALIDATED
+end to end: get_board/footprints/nets/netclasses/layers, update_items
+in a commit (one undo step), flip_items (its OWN undo step even inside
+an open commit; setting the layer instead leaves pads on F.Cu),
+add_to_selection + run_action common.Control.zoomFitSelection,
+refill_zones (one undo step), save, run_action common.Interactive.undo.
+The flatpak socket is ~/.var/app/org.kicad.KiCad/cache/tmp/kicad/
+api.sock (sandbox TMPDIR=/var/tmp). Remote GUI = ssh -L local.sock:
+remote.sock; nng ipc rides it unchanged.
 
 ## 7. Testing policy
 

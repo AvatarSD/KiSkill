@@ -44,3 +44,8 @@ releases, unzip into .tools/ (no root needed).
 2. Render F.Cu/B.Cu/Edge.Cuts → PNG → look (kicad-review pixel diff).
 3. pcbnew rewrites the file wholesale on SES import — commit the
    pre-route board first, diff after.
+
+- Board OPEN in the user's editor? Don't write the file (refused while
+  the lock exists): apply placement live with `kx live pcb place FILE`
+  and `kx live pcb refill` (kicad-pcb skill, "Live mode"); route on a
+  saved copy, then hand back.
