@@ -101,6 +101,7 @@ def generate(sess, parts=None):
     items.append(t)
     for it in items:
         doc.insert(len(doc) - 2, it)
+    owners = regen.restamp(doc, "rt/" + key, owners)
     sexp.save_file(str(SCH), doc)
     sess.snapshot(SCH, owners, base)
 
@@ -172,6 +173,11 @@ WORK.mkdir(parents=True)
 (WORK / "rt.kicad_pro").write_text("{}\n")
 generate(session())
 check("fresh generation: no edits", classes() == [])
+first, first_snap = SCH.read_bytes(), session().snap_path(SCH).read_bytes()
+generate(session())
+check("restamp: two generations are byte-identical (sheet + snapshot)",
+      SCH.read_bytes() == first and session().snap_path(SCH).read_bytes() == first_snap)
+R1_UUID = regen._uid(sym(sexp.load_file(str(SCH)), "R1"))
 resave()
 check(f"KiCad re-save is not an edit{'' if CLI else ' (no kicad-cli: skipped)'}",
       classes() == [])
@@ -191,6 +197,16 @@ ends = {tuple(map(float, sexp.atoms(x))) for w in wires
 check("move: stubs re-hung at the pins' new position",
       (50.8, 72.39) in ends and (50.8, 80.01) in ends and (50.8, 46.99) not in ends)
 check("move: second pass is clean", classes() == [])
+check("restamp: a moved symbol keeps its uuid",
+      regen._uid(sym(sexp.load_file(str(SCH)), "R1")) == R1_UUID)
+if CLI:
+    net = WORK / "t.net"
+    subprocess.run(kcli.cmd() + ["sch", "export", "netlist", "-o", str(net), str(SCH)],
+                   capture_output=True)
+    comp = next(c for c in sexp.walk(sexp.load_file(str(net)), "comp")
+                if sexp.atoms(sexp.find(c, "ref"))[0] == "R1")
+    check("restamp: netlist tstamp = the stable uuid",
+          R1_UUID in sexp.dumps(sexp.find(comp, "sheetpath")) + sexp.dumps(comp))
 if CLI:
     check("connectivity unchanged after an override-only regeneration",
           regen.connectivity_diff(net0, regen.netlist(str(SCH))) == [])

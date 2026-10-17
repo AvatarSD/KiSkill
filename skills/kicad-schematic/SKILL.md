@@ -329,7 +329,9 @@ script's build entry point:
 3. The generator asks `overrides.symbol(sheet, "REF/UNIT")`, places at
    `geometry(ov)` BEFORE hanging stubs, then `apply_symbol(node, ov)`;
    records item owners (uuid → "REF/UNIT") and `sym_state()` of the
-   script's own node as base; `snapshot()` after each save.
+   script's own node as base; `restamp(doc, seed, owners)` just before
+   each save (stable uuids: byte-identical reruns, symbol uuid = PCB
+   footprint link kept); `snapshot()` after each save.
 4. `connectivity(root)` diffs the kicad-cli netlist against the last one —
    must be unchanged when only overrides were absorbed. `report()` lists
    value/footprint/DNP overrides as "move into the gen script" (the

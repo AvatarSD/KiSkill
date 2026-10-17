@@ -283,6 +283,90 @@ def save_json(obj, path) -> None:
     tmp.replace(p)
 
 
+def save_compact(obj: dict, path) -> None:
+    """Snapshot layout: sorted, one record per line — deterministic and
+    small, so a no-change regeneration leaves git clean and a real change
+    diffs as the lines of the records that moved."""
+    def one(v):
+        return json.dumps(v, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    L = ["{"]
+    keys = sorted(obj)
+    for i, k in enumerate(keys):
+        v, end = obj[k], ("," if i < len(keys) - 1 else "")
+        if isinstance(v, dict) and v:
+            L.append(f" {one(k)}: {{")
+            sub = sorted(v)
+            L += [f"  {one(kk)}: {one(v[kk])}" + ("," if j < len(sub) - 1 else "")
+                  for j, kk in enumerate(sub)]
+            L.append(" }" + end)
+        elif isinstance(v, list) and v:
+            L.append(f" {one(k)}: [")
+            L += [f"  {one(x)}" + ("," if j < len(v) - 1 else "") for j, x in enumerate(v)]
+            L.append(" ]" + end)
+        else:
+            L.append(f" {one(k)}: {one(v)}" + end)
+    L.append("}")
+    p = pathlib.Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_suffix(p.suffix + ".tmp")
+    tmp.write_text("\n".join(L) + "\n")
+    tmp.replace(p)
+
+
+def restamp(doc: list, seed: str, owners: dict[str, str] | None = None) -> dict[str, str]:
+    """Replace every item uuid in a GENERATED sheet with one derived from
+    seed + the item's role, so two runs of the same script write
+    byte-identical files and a symbol keeps its uuid (= the PCB footprint
+    link, KiCad's netlist tstamp) across regenerations.
+
+    Roles: symbol → its "REF/UNIT"; any other item → kind + owner +
+    content signature (+ occurrence count); nested uuids (symbol pins,
+    sheet pins) → parent uuid + tag + first atom. Sheet-block uuids are
+    LEFT ALONE: they are part of every child symbol's instance path and the
+    generator must keep them stable itself. Header uuid untouched.
+    Returns the owners map re-keyed to the new uuids."""
+    owners = owners or {}
+    ns = _uuid.uuid5(_uuid.NAMESPACE_URL, "kiskill-regen:" + seed)
+    seen: dict[str, int] = {}
+    out: dict[str, str] = {}
+
+    def nested(node: list, parent: str) -> None:
+        count: dict[str, int] = {}
+        for z in node:
+            if not isinstance(z, list) or sexp.tag_of(z) == "uuid":
+                continue
+            u = sexp.find(z, "uuid")
+            if u is not None:
+                a = sexp.atoms(z)
+                role = f"{parent}|{sexp.tag_of(z)}|{a[0] if a else ''}"
+                n = count.get(role, 0)
+                count[role] = n + 1
+                u[1] = QStr(str(_uuid.uuid5(ns, f"{role}#{n}")))
+                nested(z, sexp.atoms(u)[0])
+
+    for x in doc[1:]:
+        t = sexp.tag_of(x) if isinstance(x, list) else None
+        if t is None or t in HEADER:
+            continue
+        u = sexp.find(x, "uuid")
+        if u is None:
+            continue
+        old = sexp.atoms(u)[0]
+        if t != "sheet":
+            if t == "symbol":
+                role = "symbol|" + _key(*_ref_unit(x))
+            else:
+                role = f"{t}|{owners.get(old, '')}|{_sig(_strip(x))}"
+            n = seen.get(role, 0)
+            seen[role] = n + 1
+            u[1] = QStr(str(_uuid.uuid5(ns, f"{role}#{n}")))
+        new = sexp.atoms(u)[0]
+        if old in owners:
+            out[new] = owners[old]
+        nested(x, new)
+    return out
+
+
 def load_json(path):
     return json.loads(pathlib.Path(path).read_text())
 
@@ -741,7 +825,7 @@ class Session:
         return self.log
 
     def snapshot(self, sch_path, owners=None, base=None) -> None:
-        save_json(snapshot(str(sch_path), owners, base), self.snap_path(sch_path))
+        save_compact(snapshot(str(sch_path), owners, base), self.snap_path(sch_path))
 
     def net_snapshot_path(self, root_sch) -> pathlib.Path:
         return self.snap_dir / "_net" / f"{self.key(root_sch)}.json"
@@ -754,7 +838,7 @@ class Session:
         old = load_json(p) if p.exists() else None
         d = connectivity_diff(old, new) if old is not None else ["(no previous netlist)"]
         self.net_report[self.key(root_sch)] = d
-        save_json(new, p)
+        save_compact(new, p)
         return d
 
     def report(self) -> str:
