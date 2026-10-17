@@ -51,6 +51,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -60,6 +61,7 @@ from . import kcli, live, sexp
 from .sexp import QStr, Sym
 
 VERSION = 1
+SAVED_ENV = "KX_REGEN_SAVED_BY"   # set by live_sch around a generator run
 FLAGS = ("exclude_from_sim", "in_bom", "on_board", "in_pos_files", "dnp")
 HEADER = {"version", "generator", "generator_version", "uuid", "paper",
           "title_block", "lib_symbols", "sheet_instances", "symbol_instances",
@@ -777,6 +779,7 @@ class Session:
         self.force = force
         self.overrides = Overrides.load(self.ovr_path)
         self.log: list[dict] = []
+        self.live_locks: list[str] = []
         self.net_before: dict[str, dict] = {}
         self.net_report: dict[str, list[str]] = {}
 
@@ -786,11 +789,23 @@ class Session:
     def snap_path(self, sch_path) -> pathlib.Path:
         return self.snap_dir / f"{self.key(sch_path)}.json"
 
-    def guard_locks(self, dirs) -> None:
+    def guard_locks(self, dirs, saved_by=None) -> None:
+        """Refuse while KiCad holds a lock in any of dirs — unless the
+        holder is an editor live_sch has just SAVED (saved_by, or the
+        KX_REGEN_SAVED_BY env it sets for a generator it runs: 'user@host'
+        list). Then the disk is what that editor shows, the generator may
+        write, and live_sch reverts the editor onto the result."""
         locks = [l for d in dirs for l in live.lock_files(str(d))]
+        ok = set(saved_by or ()) | {
+            h for h in os.environ.get(SAVED_ENV, "").split(",") if h}
+        self.live_locks = [l for l in locks if live.lock_holder(l) in ok]
+        locks = [l for l in locks if l not in self.live_locks]
         if locks:
-            raise Refused("KiCad has the project open (lock files) — save and "
-                          "close it, then regenerate", locks)
+            who = ", ".join(sorted({live.lock_holder(l) for l in locks}))
+            raise Refused(f"KiCad has the project open ({who}) — save and "
+                          "close it, or regenerate live (the editor is saved, "
+                          "then reverted onto the result: kx live sch regen, "
+                          "or the generator's --live)", locks)
 
     def absorb(self, sheets) -> list[dict]:
         """Diff every sheet against its snapshot; raise Refused (writing
