@@ -15,9 +15,12 @@ Repo: `$(kx root)` (engine + design docs).
 
 1. `kx env PROJECT_DIR` — one call: kicad-cli (+nightly) version, lock
    files (tilde = literal filename prefix), IPC socket/aliveness,
-   recommended backend. If `backends.file.writable_now` is false, KiCad
-   has the project OPEN: do not write; ask the user to close/reload, or
-   work on a scratch copy.
+   recommended backend, the API-server setting of every install
+   (`api_server_settings`) and stale sockets. If
+   `backends.file.writable_now` is false, KiCad has the project OPEN: do
+   not write files (a .kicad_pcb write is refused outright); for the
+   board use live mode (`kx live pcb …`, kicad-pcb skill), otherwise ask
+   the user to close/reload, or work on a scratch copy.
    `kx` = ~/.local/bin/kx → repo bin/kx (self-sets PYTHONPATH; works
    from any cwd). Python API instead: run with
    PYTHONPATH=$(kx root) (no pip install).
@@ -37,6 +40,12 @@ CLEAN → PROBED → STAGED → VERIFIED (geometric verifier 0 violations) →
 RENDERED (svg→png, ERC run) → REVIEWED (pixel+semantic+ERC diff judged
 against rule canon) → COMMITTED. Never skip a state; never write a file
 that has not passed VERIFIED; never commit one that has not been REVIEWED.
+
+## Live IPC — board on KiCad 10 (validated 10.0.7 flatpak)
+
+PCB editor only on 10.x: see kicad-pcb skill "Live mode" (`kx live pcb`,
+`kx live connect --host H`, `kx live headless`). The scope is decided by
+the SERVER's version (`ipc_server_version`), not the local kicad-cli.
 
 ## Live IPC against the v11 nightly (validated 10.99.0 build 87de73b)
 

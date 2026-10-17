@@ -49,6 +49,19 @@
       (definition is packed Any — needs unpack_any work), pin world pos
       from on-disk lib cache for net-aware live rules, update_items
       (move) op.
+- [x] Live PCB over IPC on KiCad 10 (feat/pcb-ipc): flatpak socket
+      discovery fixed (~/.var/app/<id>/cache/tmp/kicad, liveness via
+      connect, stale files reported, api.enable_server per install in
+      `kx env`); `kx live pcb` summary/fps/move/rotate/flip/place/show/
+      refill/undo/save with validate→commit→readback; .kicad_pcb file
+      writes refused under a GUI lock; `kx live connect --host H` ssh
+      unix-socket forward; `kx live headless` (Xvfb + flatpak pcbnew,
+      scratch config, private D-Bus: 10 s start). tests/test_live_pcb.py
+      (pure) + test_live_pcb_ipc.py (e2e). Follow-ups: tracks/vias/zone
+      creation ops; DRC over IPC (no API in 10 — kicad-cli on a saved
+      copy); interactive_move for operator-confirmed placement; group
+      flips into the move commit if a later KiCad lets flip_items join
+      an open commit.
 - [ ] netmodel: file-level net model extraction. Parse .kicad_sch +
       embedded lib_symbols → Seg/Pin/junction with REAL nets (pin_world
       over each instance's at/rot/mirror; stitch nets via labels/power

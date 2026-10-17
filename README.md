@@ -10,8 +10,11 @@ Built on a lossless s-expression parser (byte-identical round-trips on real
 2 MB boards), a geometric verifier that runs before every write, and visual
 diffs fed back to the agent so it can *see* what it changed.
 
-> Targets KiCad 9/10 (file-based) today; KiCad 11 IPC live-mode rides the same
-> adapter when it ships. The core engine is stdlib-only.
+> Targets KiCad 9/10 (file-based), plus LIVE board editing in an open KiCad 10
+> PCB editor over IPC (`kx live pcb`, also on a remote host via an ssh socket
+> forward); live schematic editing rides the same adapter on KiCad 11. The core
+> engine is stdlib-only; live mode needs `kicad-python` in the repo `.venv`
+> (`python3 -m venv .venv && .venv/bin/pip install kicad-python==0.8.0`).
 
 ---
 
