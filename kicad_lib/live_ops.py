@@ -18,6 +18,7 @@ there. Coordinates in mm (IPC speaks nanometers).
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sys
 
@@ -77,14 +78,25 @@ def _gate(sch, new_segs: list[Seg], new_junctions: list[tuple]) -> list[str]:
             if not any(d in v for d in _NET_BLIND_DROP)]
 
 
-def _push(sch, items, msg: str) -> list[str]:
-    commit = sch.begin_commit()
+@contextlib.contextmanager
+def committed(doc, msg: str):
+    """One GUI undo step around a block of IPC edits, schematic or board:
+    begin_commit, run the block, push_commit(msg). Any exception drops the
+    commit (KiCad discards the staged edits) and re-raises, so a failing
+    op never leaves a half-applied change in the editor. Shared by
+    live_ops (schematic) and live_pcb (board)."""
+    commit = doc.begin_commit()
     try:
-        sch.create_items(items)
-        sch.push_commit(commit, msg)
-    except Exception:
-        sch.drop_commit(commit)
+        yield commit
+        doc.push_commit(commit, msg)
+    except BaseException:
+        doc.drop_commit(commit)
         raise
+
+
+def _push(sch, items, msg: str) -> list[str]:
+    with committed(sch, msg):
+        sch.create_items(items)
     return []
 
 
