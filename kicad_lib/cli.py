@@ -20,7 +20,14 @@ Subcommands grow with the atomic-op set (DESIGN.md §4). Today:
   kx env [PROJECT_DIR]      backend detection: file/ipc/headless, locks
   kx fab SCH|- PCB|- OUTDIR fab bundle: BOM + JLC BOM/CPL + gerbers+drill
   kx live CMD [ARGS]        verified atomic ops on the RUNNING KiCad
-                            (snap/refs/check/wire/junction/label/text/rm)
+                            (schematic, v11: snap/refs/check/wire/junction/
+                            label/text/rm)
+  kx live pcb CMD [ARGS]    live BOARD ops, one undo step each (summary/fps/
+                            move/rotate/flip/place/show/refill/undo/save)
+  kx live connect --host H  ssh-forward H's KiCad socket, make it the target
+  kx live disconnect        close that tunnel
+  kx live status            which socket kx talks to, and why
+  kx live headless start BOARD | stop | status   Xvfb + flatpak pcbnew
   kx regen CMD ...          round-trip for GENERATED schematics: status /
                             absorb hand edits into overrides, snapshot,
                             netlist (kicad_lib/regen.py)
@@ -262,6 +269,58 @@ def diff_rev(rev: str, path: str) -> dict:
     return out
 
 
+def _live(argv: list[str]) -> int:
+    """kx live … (already running under the repo .venv)."""
+    from . import live
+    sub = argv[0] if argv else ""
+    if sub == "pcb":
+        from . import live_pcb
+        return live_pcb.main(argv[1:])
+    if sub in ("connect", "disconnect"):
+        from . import live_remote
+        host = argv[argv.index("--host") + 1] if "--host" in argv else None
+        if sub == "connect":
+            if not host:
+                print("kx live connect --host HOST [--socket REMOTE_SOCK]")
+                return 2
+            rsock = (argv[argv.index("--socket") + 1]
+                     if "--socket" in argv else None)
+            out = live_remote.connect(host, rsock)
+            ok = out["connected"]
+        else:
+            out = live_remote.disconnect(host)
+            ok = out["disconnected"]
+        json.dump(out, sys.stdout, indent=1)
+        print()
+        return 0 if ok else 1
+    if sub == "status":
+        info = live.ipc_socket_info()
+        info["probe"] = live.ipc_probe(info["socket"]) if info["socket"] \
+            else None
+        info["why_not"] = live.disc.why_not(info)
+        json.dump(info, sys.stdout, indent=1)
+        print()
+        return 0 if info["probe"] and info["probe"]["alive"] else 1
+    if sub == "headless":
+        from . import live_headless as lh
+        act = argv[1] if len(argv) > 1 else ""
+        if act == "start" and len(argv) == 3:
+            out = lh.start(argv[2])
+        elif act == "stop":
+            out = lh.stop()
+        elif act == "status":
+            out = lh.status() or {"running": False,
+                                  "missing": lh.missing()}
+        else:
+            print("kx live headless start BOARD | stop | status")
+            return 2
+        json.dump(out, sys.stdout, indent=1)
+        print()
+        return 0
+    from . import live_ops
+    return live_ops.main(argv)
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if not argv:
@@ -306,16 +365,17 @@ def main(argv: list[str] | None = None) -> int:
         import subprocess
         from . import live
         if not live.VENV_PY.exists():
-            print("repo .venv missing — run tools/bootstrap_kipy.sh")
+            print("repo .venv missing — KiCad 10: python3 -m venv .venv && "
+                  ".venv/bin/pip install kicad-python==0.8.0; KiCad 11 "
+                  "nightly: tools/bootstrap_kipy.sh")
             return 2
         if pathlib.Path(sys.executable) != live.VENV_PY:
             root = pathlib.Path(__file__).resolve().parents[1]
             env = dict(os.environ, PYTHONPATH=str(root))
             return subprocess.run(
-                [str(live.VENV_PY), "-m", "kicad_lib.live_ops", *argv[1:]],
+                [str(live.VENV_PY), "-m", "kicad_lib.cli", *argv],
                 env=env).returncode
-        from . import live_ops
-        return live_ops.main(argv[1:])
+        return _live(argv[1:])
     if argv[0] == "regen":
         from . import regen
         return regen.main(argv[1:])

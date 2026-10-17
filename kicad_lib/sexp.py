@@ -193,6 +193,10 @@ def load_file(path: str) -> list:
 
 
 def save_file(path: str, root: list) -> None:
+    """Write root to path. A .kicad_pcb held open by the KiCad PCB editor
+    is refused (live.HeldByGui) — edit it live with `kx live pcb`."""
+    from .live import refuse_if_gui_holds
+    refuse_if_gui_holds(path)
     with open(path, "w", encoding="utf-8") as f:
         f.write(dumps(root))
 

@@ -15,8 +15,14 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from kicad_lib import live  # noqa: E402
 
-if not live.ipc_socket() or not live.ipc_ping():
+_probe = live.ipc_probe() if live.ipc_socket() else {"alive": False}
+if not _probe["alive"]:
     print("SKIP: no live KiCad IPC socket — launch nightly eeschema first")
+    raise SystemExit(0)
+if live.major_of(_probe.get("version")) and live.major_of(
+        _probe.get("version")) < 11:
+    print(f"SKIP: live KiCad is {_probe['version']} — schematic IPC needs "
+          "v11 (board ops: tests/test_live_pcb_ipc.py)")
     raise SystemExit(0)
 
 try:
