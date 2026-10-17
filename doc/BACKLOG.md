@@ -90,9 +90,10 @@
       ignored-checks sweep candidate below.
 - [x] regen.py: round-trip for generated schematics (snapshot sidecars,
       absorb GUI edits into overrides.json or refuse, netlist gate,
-      `kx regen`); test_regen 29/29 incl. KiCad re-save. Follow-ups:
-      deterministic symbol uuids in generators (uuid5 of sheet+ref+unit)
-      so a regenerated schematic keeps its PCB footprint links; absorb
+      `kx regen`); test_regen 29/29 incl. KiCad re-save. regen.restamp() gives
+      generated items role-derived uuid5s (symbol = REF/UNIT) and snapshots
+      are written sorted one-record-per-line: a no-change regeneration is
+      byte-identical and the PCB footprint link survives. Follow-up: absorb
       sheet-pin moves and label moves of unmoved symbols (refused today).
 - [ ] geom completeness: rot_xy mirror order FIXED (rotate, then mirror
       in world axes — proven by netlist at rot 90, both mirrors). Still
