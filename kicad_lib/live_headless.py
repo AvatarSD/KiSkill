@@ -158,7 +158,7 @@ def _state_path() -> pathlib.Path:
 
 
 def _pids_with_env(marker: str) -> list[int]:
-    """Our sandboxed pcbnew: the only processes carrying our TMPDIR."""
+    """Our sandboxed editor: the only processes carrying our TMPDIR."""
     out = []
     for p in pathlib.Path("/proc").iterdir():
         if not p.name.isdigit():
@@ -171,8 +171,31 @@ def _pids_with_env(marker: str) -> list[int]:
     return out
 
 
+def editor_for(path: str) -> tuple[str, str]:
+    """(flatpak command, open-document type) for a board, a schematic, or
+    a project (.kicad_pro: the project manager, which then opens the
+    schematic editor — how the operator runs KiCad; its File menu and
+    handler set differ from standalone eeschema)."""
+    if path.endswith(".kicad_sch"):
+        return "eeschema", "schematic"
+    if path.endswith(".kicad_pro"):
+        return "kicad", "schematic"
+    return "pcbnew", "pcb"
+
+
+def _open_sch_editor(display: int) -> None:
+    """Project manager: Ctrl+E = Schematic Editor (needs xdotool)."""
+    env = dict(os.environ, DISPLAY=f":{display}")
+    r = subprocess.run(["xdotool", "search", "--name", "KiCad"],
+                       capture_output=True, text=True, env=env)
+    for w in r.stdout.split():
+        subprocess.run(["xdotool", "windowfocus", "--sync", w, "key",
+                        "ctrl+e"], capture_output=True, env=env, timeout=10)
+
+
 def start(board: str, timeout_s: float = 180.0) -> dict:
-    """Open board in a headless PCB editor; make it the live target."""
+    """Open board (.kicad_pcb) or schematic (.kicad_sch) in a headless
+    editor (pcbnew / eeschema); make it the live target."""
     if _state_path().exists():
         raise RuntimeError("a headless editor is already up — "
                            "`kx live headless stop` first")
@@ -187,6 +210,7 @@ def start(board: str, timeout_s: float = 180.0) -> dict:
     if live.gui_lock(board):
         raise RuntimeError(f"{board} is already open in a KiCad editor")
     branch, version = flatpak_kicad()
+    command, doctype = editor_for(board)
     n = _free_display()
     # under $HOME: the sandbox cannot see /run/user/... or the host /tmp,
     # and a config it cannot read brings the first-run wizard back
@@ -209,7 +233,7 @@ def start(board: str, timeout_s: float = 180.0) -> dict:
     cmd = ["flatpak", "run", f"--branch={branch}",
            f"--env=KICAD_CONFIG_HOME={cfg}",
            f"--env=TMPDIR=/var/tmp/{tmp_name}",
-           "--command=pcbnew", FLATPAK, board]
+           f"--command={command}", FLATPAK, board]
     conf = _dbus_conf(work)
     if conf:
         cmd = ["dbus-run-session", f"--config-file={conf}", "--"] + cmd
@@ -217,26 +241,32 @@ def start(board: str, timeout_s: float = 180.0) -> dict:
     kicad = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT,
                              env=env, start_new_session=True)
     state = {"kind": "headless", "socket": str(sock), "display": n,
-             "board": board, "xvfb_pid": xvfb.pid, "kicad_pid": kicad.pid,
+             "board": board, "editor": command, "xvfb_pid": xvfb.pid, "kicad_pid": kicad.pid,
              "tmp_marker": f"TMPDIR=/var/tmp/{tmp_name}",
              "work": str(work), "flatpak_branch": branch,
              "kicad_version": version}
     _state_path().write_text(json.dumps(state))
     deadline = time.monotonic() + timeout_s
+    poked = 0.0
     while time.monotonic() < deadline:
         if kicad.poll() is not None:
             stop()
-            raise RuntimeError(f"pcbnew exited ({kicad.returncode}); "
+            raise RuntimeError(f"{command} exited ({kicad.returncode}); "
                                f"log: {work / 'kicad.log'}")
         if disc.listening(str(sock)) and any(
-                d["type"] == "pcb" for d in live.open_documents(str(sock))):
+                d["type"] == doctype for d in live.open_documents(str(sock))):
             live.write_target({k: state[k] for k in
                                ("kind", "socket", "display", "board")})
             return state
+        if (command == "kicad" and disc.listening(str(sock))
+                and shutil.which("xdotool")
+                and time.monotonic() - poked > 10):
+            _open_sch_editor(n)
+            poked = time.monotonic()
         time.sleep(1)
     if os.environ.get("KX_HEADLESS_DEBUG") != "1":  # 1: leave it up to look
         stop()
-    raise RuntimeError(f"PCB editor not ready after {timeout_s:.0f}s "
+    raise RuntimeError(f"{command} not ready after {timeout_s:.0f}s "
                        f"(a blocking dialog?) — log: {work / 'kicad.log'}")
 
 
@@ -269,8 +299,8 @@ def stop() -> dict:
             pass
     time.sleep(0.5)
     b = pathlib.Path(st["board"])
-    for lck in (b.with_name(f"~{b.name}.lck"),
-                b.with_name(f"~{b.stem}.kicad_pro.lck")):
+    for lck in [b.with_name(f"~{b.stem}.{ext}.lck")
+                for ext in ("kicad_pro", "kicad_sch", "kicad_pcb")]:
         try:
             who = json.loads(lck.read_text())
             if who.get("hostname") == os.uname().nodename:

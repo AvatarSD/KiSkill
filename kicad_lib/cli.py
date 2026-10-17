@@ -24,10 +24,16 @@ Subcommands grow with the atomic-op set (DESIGN.md §4). Today:
                             label/text/rm)
   kx live pcb CMD [ARGS]    live BOARD ops, one undo step each (summary/fps/
                             move/rotate/flip/place/show/refill/undo/save)
+  kx live sch status|save|revert|regen [--dir D] [--host H] -- CMD
+                            regenerate a schematic the GUI has OPEN: save the
+                            editor, run the generator, revert the editor onto
+                            the result (KiCad 10: through its X11 window)
   kx live connect --host H  ssh-forward H's KiCad socket, make it the target
   kx live disconnect        close that tunnel
   kx live status            which socket kx talks to, and why
-  kx live headless start BOARD | stop | status   Xvfb + flatpak pcbnew
+  kx live headless start BOARD|SCH|PRO | stop | status
+                            Xvfb + flatpak pcbnew / eeschema / project
+                            manager (+ its schematic editor)
   kx regen CMD ...          round-trip for GENERATED schematics: status /
                             absorb hand edits into overrides, snapshot,
                             netlist (kicad_lib/regen.py)
@@ -276,6 +282,9 @@ def _live(argv: list[str]) -> int:
     if sub == "pcb":
         from . import live_pcb
         return live_pcb.main(argv[1:])
+    if sub == "sch":
+        from . import live_sch
+        return live_sch.main(argv[1:])
     if sub in ("connect", "disconnect"):
         from . import live_remote
         host = argv[argv.index("--host") + 1] if "--host" in argv else None
@@ -312,7 +321,7 @@ def _live(argv: list[str]) -> int:
             out = lh.status() or {"running": False,
                                   "missing": lh.missing()}
         else:
-            print("kx live headless start BOARD | stop | status")
+            print("kx live headless start BOARD|SCH|PRO | stop | status")
             return 2
         json.dump(out, sys.stdout, indent=1)
         print()

@@ -5,8 +5,14 @@
   ipc       a running KiCad answers on its IPC socket — found by
             ipc_discovery (flatpak + native paths, liveness-checked), a
             `kx live connect --host H` ssh forward, or KICAD_API_SOCKET.
-            KiCad 9/10: PCB only; schematic lands in v11
-  headless  kipy can spawn its own API server (no GUI) — KiCad 11+
+            KiCad 9/10: PCB only. A KiCad 10.0.7 schematic editor answers
+            GetOpenDocuments and nothing useful else (measured by
+            sch_capabilities(): no GetItems, item create/update rejects
+            every schematic type, no save/revert/run_action) — the live
+            schematic path on 10 is live_sch (save, regen, revert through
+            the editor's own window). Schematic items over IPC: v11
+  headless  kipy can spawn its own API server (no GUI) — KiCad 11+;
+            on 10 `kx live headless` runs the real editor under Xvfb
 
 `kx env [PROJECT_DIR]` prints the detection result; kicad-project's
 session entry protocol starts here. kipy lives in the repo .venv —
@@ -19,6 +25,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 
 from . import ipc_discovery as disc
@@ -73,6 +80,15 @@ def gui_lock(path: str) -> pathlib.Path | None:
     return lck if lck.exists() else None
 
 
+def lock_holder(lck) -> str:
+    """'user@host' recorded in a KiCad lock file ('unknown' if unreadable)."""
+    try:
+        who = json.loads(pathlib.Path(lck).read_text())
+        return f"{who.get('username', '?')}@{who.get('hostname', '?')}"
+    except (OSError, ValueError):
+        return "unknown"
+
+
 def refuse_if_gui_holds(path: str) -> None:
     """Raise HeldByGui for a .kicad_pcb whose editor is open: a file write
     under a running GUI is lost on its next save, or clobbers the user's
@@ -84,11 +100,7 @@ def refuse_if_gui_holds(path: str) -> None:
     lck = gui_lock(path)
     if lck is None:
         return
-    try:
-        who = json.loads(lck.read_text())
-        holder = f"{who.get('username', '?')}@{who.get('hostname', '?')}"
-    except (OSError, ValueError):
-        holder = "unknown"
+    holder = lock_holder(lck)
     raise HeldByGui(
         f"refusing to write {path}: the KiCad PCB editor has it open "
         f"({holder}, {lck.name}). Edit the open board with "
@@ -200,6 +212,83 @@ def open_documents(sock: str | None = None) -> list[dict]:
         return []
 
 
+# Non-mutating probe of each schematic call: a request the server has no
+# handler for fails with "no handler available"; anything else (a decode
+# error, "not open", "not found") means the call is served. Write calls are
+# probed with ids/documents that cannot exist, so nothing changes.
+_SCH_CAPS = r"""
+import json, uuid, kipy
+from google.protobuf.any_pb2 import Any
+from kipy.proto.common.commands import editor_commands_pb2 as ec
+from kipy.proto.common.types import DocumentType, KiCadObjectType
+from kipy.proto.schematic import schematic_types_pb2 as sp
+k = kipy.KiCad(socket_path='ipc://' + SOCK, timeout_ms=5000)
+c = k._client
+docs = list(c.send(ec.GetOpenDocuments(type=DocumentType.DOCTYPE_SCHEMATIC),
+                   ec.GetOpenDocumentsResponse).documents)
+out = {"documents": [d.board_filename for d in docs]}
+if docs:
+    doc = docs[0]
+    ghost = type(doc)(); ghost.CopyFrom(doc)
+    ghost.board_filename = "kx-capability-probe-" + uuid.uuid4().hex + ".kicad_sch"
+    def served(cmd, resp):
+        try:
+            c.send(cmd, resp)
+            return True
+        except Exception as e:
+            return "no handler available" not in str(e)
+    gi = ec.GetItems(); gi.header.document.CopyFrom(doc)
+    gi.types.append(KiCadObjectType.KOT_SCH_SYMBOL)
+    out["get_items"] = served(gi, ec.GetItemsResponse)
+    ln = sp.Line(); ln.id.value = str(uuid.uuid4())
+    ui = ec.UpdateItems(); ui.header.document.CopyFrom(doc)
+    a = Any(); a.Pack(ln); ui.items.append(a)
+    try:
+        r = c.send(ui, ec.UpdateItemsResponse)
+        out["item_write"] = not any("decode" in x.status.error_message
+                                    for x in r.updated_items)
+    except Exception as e:
+        out["item_write"] = "no handler available" not in str(e)
+    for name in ("SaveDocument", "RevertDocument"):
+        m = getattr(ec, name)(); m.document.CopyFrom(ghost)
+        from google.protobuf.empty_pb2 import Empty
+        out[name] = served(m, Empty)
+    s2 = ec.SaveDocumentToString(); s2.document.CopyFrom(doc)
+    out["SaveDocumentToString"] = served(s2, ec.SavedDocumentResponse)
+    out["RunAction"] = served(ec.RunAction(action="kx.capability.probe"),
+                              ec.RunActionResponse)
+print(json.dumps(out))
+"""
+
+
+def sch_capabilities(sock: str | None = None) -> dict | None:
+    """Which schematic calls the live KiCad serves (see _SCH_CAPS); None
+    when no socket / no kipy / no answer. KiCad 10.0.7 (standalone and
+    project manager alike): get_items, item_write, SaveDocument,
+    RevertDocument, SaveDocumentToString, RunAction all False."""
+    sock = sock or ipc_socket()
+    if not VENV_PY.exists() or sock is None:
+        return None
+    try:
+        r = subprocess.run([str(VENV_PY), "-c",
+                            f"SOCK = {sock!r}\n" + _SCH_CAPS],
+                           capture_output=True, text=True, timeout=30)
+        return json.loads(r.stdout.strip().splitlines()[-1])
+    except (OSError, subprocess.TimeoutExpired, ValueError, IndexError):
+        return None
+
+
+def sch_scope(caps: dict | None) -> str:
+    """One word for what IPC can do to an open schematic."""
+    if not caps or not caps.get("documents"):
+        return "none"
+    if caps.get("get_items") and caps.get("item_write"):
+        return "items"
+    if caps.get("SaveDocument") and caps.get("RevertDocument"):
+        return "save+revert"
+    return "list-only"
+
+
 def major_of(v: str | None) -> int:
     m = re.match(r"(\d+)\.(\d+)", v or "")
     if not m:
@@ -225,6 +314,9 @@ def detect(project_dir: str | None = None) -> dict:
     sock = info["socket"]
     probe = ipc_probe(sock) if sock else {"alive": False, "version": None}
     alive = probe["alive"]
+    docs = open_documents(sock) if alive else []
+    caps = (sch_capabilities(sock) if any(d["type"] == "schematic"
+                                          for d in docs) else None)
     if alive:
         ipc_note = ""
     elif sock:
@@ -242,7 +334,8 @@ def detect(project_dir: str | None = None) -> dict:
         "ipc_stale_sockets": info.get("stale", []),
         "ipc_target": info.get("target") or info.get("stale_target"),
         "api_server_settings": info.get("api_settings", []),
-        "open_documents": open_documents(sock) if alive else [],
+        "open_documents": docs,
+        "sch_capabilities": caps,
         "kipy": VENV_PY.exists(),
         "backends": {
             "file": {"available": True,
@@ -253,7 +346,14 @@ def detect(project_dir: str | None = None) -> dict:
             "ipc": {"available": alive,
                     "scope": ipc_scope(probe["version"], cli_major)
                     if alive else None,
+                    "sch": sch_scope(caps) if caps else None,
                     "note": ipc_note},
+            "live_sch": {
+                "available": bool(shutil.which("xdotool")),
+                "note": ("save -> regen -> revert through the open "
+                         "editor's window: `kx live sch regen -- CMD`"
+                         if shutil.which("xdotool") else
+                         "needs xdotool where the editor runs")},
             "headless": {"available": cli_major >= 11,
                          "note": (f"use {NIGHTLY_BIN_DIR}" if nver else
                                   "kipy-spawned server needs KiCad 11+; on "
