@@ -41,10 +41,27 @@ RENDERED (svg→png, ERC run) → REVIEWED (pixel+semantic+ERC diff judged
 against rule canon) → COMMITTED. Never skip a state; never write a file
 that has not passed VERIFIED; never commit one that has not been REVIEWED.
 
+## Open project: file vs live vs regen (decide from `kx env`)
+
+| The project is…                         | Do                                                   |
+|-----------------------------------------|------------------------------------------------------|
+| not open (`writable_now: true`)         | file edits / plain regeneration                      |
+| open, board                             | `kx live pcb …` (kicad-pcb skill), IPC, 1 undo step each |
+| open, schematic, GENERATED (gen script) | `kx live sch regen -- CMD` / the script's `--live`: save → regen → revert, the change appears in the open editor (kicad-schematic §12) |
+| open, schematic, hand-drawn, KiCad 10   | no live path (`backends.ipc.sch: list-only`): scratch copy, or ask the user to save + close |
+| open, schematic, v11 nightly            | `kx live` item ops (kicad-schematic §11)             |
+
+`backends.ipc.sch` is MEASURED per server (`sch_capabilities`): none /
+list-only / save+revert / items. `backends.live_sch` says whether
+xdotool is here (an editor on another host needs it there).
+
 ## Live IPC — board on KiCad 10 (validated 10.0.7 flatpak)
 
 PCB editor only on 10.x: see kicad-pcb skill "Live mode" (`kx live pcb`,
-`kx live connect --host H`, `kx live headless`). The scope is decided by
+`kx live connect --host H`, `kx live headless`). `kx live headless start`
+also takes a .kicad_sch (standalone eeschema) or a .kicad_pro (project
+manager + its schematic editor, opened with Ctrl+E — the operator's
+setup; its File menu and handler set differ from standalone). The scope is decided by
 the SERVER's version (`ipc_server_version`), not the local kicad-cli.
 
 ## Live IPC against the v11 nightly (validated 10.99.0 build 87de73b)

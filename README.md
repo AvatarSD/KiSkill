@@ -12,7 +12,9 @@ diffs fed back to the agent so it can *see* what it changed.
 
 > Targets KiCad 9/10 (file-based), plus LIVE board editing in an open KiCad 10
 > PCB editor over IPC (`kx live pcb`, also on a remote host via an ssh socket
-> forward); live schematic editing rides the same adapter on KiCad 11. The core
+> forward); live schematic editing rides the same adapter on KiCad 11. On
+> KiCad 10 a GENERATED schematic updates in the operator's open editor
+> (`kx live sch regen`: save, regenerate, revert through the editor window). The core
 > engine is stdlib-only; live mode needs `kicad-python` in the repo `.venv`
 > (`python3 -m venv .venv && .venv/bin/pip install kicad-python==0.8.0`).
 

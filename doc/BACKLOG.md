@@ -62,6 +62,20 @@
       copy); interactive_move for operator-confirmed placement; group
       flips into the move commit if a later KiCad lets flip_items join
       an open commit.
+- [x] Live schematic regeneration on KiCad 10 (feat/sch-live): measured
+      what 10.0.7 serves for schematics over IPC — GetOpenDocuments only
+      (no GetItems; Create/UpdateItems reject every schematic type; no
+      Save/Revert/RunAction, PCB-only in 10; same under the project
+      manager) → `live.sch_capabilities` + `kx env backends.ipc.sch`.
+      So save → regen → revert goes through the editor's X11 window
+      (x11_editor.py: Ctrl+S verified by the title "*", File > Revert by
+      menu index per editor class, confirmation checked, open dialog =
+      refuse); `kx live sch regen -- CMD`, regen.guard_locks lets the
+      saved holders through (KX_REGEN_SAVED_BY); remote editor via
+      `ssh HOST python3 -`. headless start takes .kicad_sch/.kicad_pro.
+      Follow-ups: IPC driver once a KiCad serves schematic Save/Revert;
+      restore the operator's sheet + zoom after revert (revert lands on
+      root); a .kicad_pro change is not reloaded by revert.
 - [ ] netmodel: file-level net model extraction. Parse .kicad_sch +
       embedded lib_symbols → Seg/Pin/junction with REAL nets (pin_world
       over each instance's at/rot/mirror; stitch nets via labels/power

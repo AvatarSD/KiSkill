@@ -274,6 +274,15 @@ Goal: place footprints so KiCad's **Update PCB from Schematic** adopts them
 
 ## 11. Live IPC editing (KiCad v11 nightly, GUI open)
 
+KiCad 10 has NONE of this for schematics: `kx env` →
+`backends.ipc.sch` = `list-only` (10.0.7, standalone and project
+manager alike: no get_items, every schematic item type rejected on
+create/update, no save/revert/run_action — `live.sch_capabilities()`
+measures it per server). On 10, an open generated schematic is updated
+with §12's live regeneration instead. Also: the .venv's kipy 0.8.0
+ships a `kipy.schematic` layer that does not import against its own
+protos — the code below needs the master bootstrap.
+
 When `kx env` reports `ipc_alive: true` + scope `pcb+sch`, edit the
 schematic INSIDE the running eeschema instead of the file (the file is
 LOCKED then — never write it). kipy master via repo `.venv` (bootstrap:
@@ -339,6 +348,38 @@ script's build entry point:
 
 Bootstrap the first snapshots only from pristine (git-clean) generator
 output. CLI: `kx regen status|absorb DIR SNAPDIR OVERRIDES [--force]`.
+
+### Live regeneration — the operator keeps the schematic OPEN
+
+`kicad_lib/live_sch.py` turns step 1's refusal into save → regenerate →
+revert, so changes appear in the operator's open editor (same window):
+
+    kx live sch status --dir PROJ [--dir PROJ2]     # held projects + editors
+    kx live sch regen --dir PROJ [--host H] -- python3 gen/build_all.py
+
+or in the gen script itself: `with live_sch.session([dirs], host=H):
+generate()` (Xena: `build_all.py --live`).
+
+1. SAVE each open schematic editor (its unsaved GUI edits reach the disk;
+   verified by the "*" leaving the window title). Cannot save (a dialog
+   is open, the "*" stays) → `NotLive`, NOTHING is written; fall back to
+   the plain run (which then refuses on the lock).
+2. The generator runs with `KX_REGEN_SAVED_BY=user@host,…`;
+   `guard_locks()` lets exactly those holders' locks through, so absorb
+   reads the saved edits by the usual rules (refusals still refuse).
+3. REVERT the editors (File > Revert, confirmed) — only if a sheet on
+   disk changed. A revert that fails raises `ReloadFailed`: the sheets
+   ARE regenerated; tell the operator to File > Revert before saving.
+
+KiCad 10 has no IPC for 1 and 3, so x11_editor.py types them into the
+editor's own window with xdotool (Xvfb, X11, or XWayland — the flatpak is
+an X11 client on Wayland too). The lock file names the editor's host:
+local is driven directly, another host over `ssh HOST python3 -` (needs
+xdotool + python3 THERE; `--host` overrides the ssh target). Revert
+returns the editor to the root sheet. A .kicad_pro the generator changes
+is NOT reloaded by Revert — say so (Xena's build_all warns). Proven
+headless: tests/test_live_sch_x11.py (both editor modes), hermetic
+logic: tests/test_live_sch.py.
 
 ## 13. Done checklist
 
