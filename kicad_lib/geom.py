@@ -32,18 +32,25 @@ def on_grid(v: float, eps: float = 1e-6) -> bool:
 
 def rot_xy(u: float, v: float, rot: int, mirror: str = "") -> Point:
     """Library pin offset (u, v; +Y up) → world delta (+Y down) for a
-    symbol at rotation `rot` (use mirror only with rot 0 — unambiguous)."""
-    if mirror == "x":
-        v = -v
+    symbol at rotation `rot`, THEN mirrored in WORLD axes: "x" flips Y,
+    "y" flips X. That is KiCad's order — proven against a kicad-cli
+    netlist at rot 90 with both mirrors (KiCad also re-saves r90+mirror y
+    as the equivalent r270+mirror x)."""
     if rot == 0:
-        return pt(u, -v)
-    if rot == 90:
-        return pt(-v, -u)
-    if rot == 180:
-        return pt(-u, v)
-    if rot == 270:
-        return pt(v, u)
-    raise ValueError(f"rotation must be 0/90/180/270, got {rot}")
+        x, y = u, -v
+    elif rot == 90:
+        x, y = -v, -u
+    elif rot == 180:
+        x, y = -u, v
+    elif rot == 270:
+        x, y = v, u
+    else:
+        raise ValueError(f"rotation must be 0/90/180/270, got {rot}")
+    if mirror == "x":
+        y = -y
+    elif mirror == "y":
+        x = -x
+    return pt(x + 0.0, y + 0.0)
 
 
 def pin_world(sym_at: Point, rot: int, pin_uv: Point, mirror: str = "") -> Point:
