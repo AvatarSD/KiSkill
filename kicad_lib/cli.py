@@ -21,6 +21,9 @@ Subcommands grow with the atomic-op set (DESIGN.md §4). Today:
   kx fab SCH|- PCB|- OUTDIR fab bundle: BOM + JLC BOM/CPL + gerbers+drill
   kx live CMD [ARGS]        verified atomic ops on the RUNNING KiCad
                             (snap/refs/check/wire/junction/label/text/rm)
+  kx regen CMD ...          round-trip for GENERATED schematics: status /
+                            absorb hand edits into overrides, snapshot,
+                            netlist (kicad_lib/regen.py)
 """
 
 from __future__ import annotations
@@ -313,6 +316,9 @@ def main(argv: list[str] | None = None) -> int:
                 env=env).returncode
         from . import live_ops
         return live_ops.main(argv[1:])
+    if argv[0] == "regen":
+        from . import regen
+        return regen.main(argv[1:])
     if argv[0] == "fab" and len(argv) >= 4:
         from . import fab
         json.dump(fab.bundle(None if argv[1] == "-" else argv[1],

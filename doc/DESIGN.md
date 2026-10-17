@@ -24,6 +24,9 @@ kicad_lib/
               ERC set-diff vs baseline
   live.py     backend adapter: file (KiCad ≤10 sch, lock-file aware) |
               kipy IPC (pcb @ KiCad 9+, sch @ KiCad 11+) | kipy headless
+  regen.py    round-trip for GENERATED schematics: per-sheet snapshot
+              sidecars, diff vs disk → absorb GUI edits into overrides
+              (or refuse), netlist connectivity gate
   cli.py      `kx` entry point
 ```
 
