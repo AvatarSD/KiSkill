@@ -85,13 +85,81 @@ def committed(doc, msg: str):
     commit (KiCad discards the staged edits) and re-raises, so a failing
     op never leaves a half-applied change in the editor. Shared by
     live_ops (schematic) and live_pcb (board)."""
-    commit = doc.begin_commit()
+    commit = begin_commit(doc)
     try:
         yield commit
-        doc.push_commit(commit, msg)
+        end_commit(doc, commit, msg)
     except BaseException:
-        doc.drop_commit(commit)
+        end_commit(doc, commit, None)
         raise
+
+
+# BeginCommit.header / EndCommit.header field numbers as KiCad 10.0.7
+# serves them (read from the descriptor compiled into libkiapi.so.10.0.7).
+# kipy 0.8.0's protos predate the field and send no document, which
+# KiCad refuses as soon as a second editor is open: "BeginCommit without
+# a document specified is not allowed when multiple editors are open".
+HEADER_FIELD = {"BeginCommit": 1, "EndCommit": 4}
+
+
+def _varint(n: int) -> bytes:
+    out = bytearray()
+    while True:
+        b, n = n & 0x7F, n >> 7
+        out.append(b | (0x80 if n else 0))
+        if not n:
+            return bytes(out)
+
+
+def with_document(cmd, spec):
+    """Set cmd's ItemHeader.document to spec (a DocumentSpecifier). Uses
+    the field when kipy's proto has it, else appends it as wire bytes,
+    which protobuf keeps as an unknown field and re-serializes."""
+    if "header" in cmd.DESCRIPTOR.fields_by_name:
+        cmd.header.document.CopyFrom(spec)
+        return cmd
+    from kipy.proto.common.types.base_types_pb2 import ItemHeader
+    hdr = ItemHeader()
+    hdr.document.CopyFrom(spec)
+    raw = hdr.SerializeToString()
+    num = HEADER_FIELD[cmd.DESCRIPTOR.name]
+    cmd.MergeFromString(_varint(num << 3 | 2) + _varint(len(raw)) + raw)
+    return cmd
+
+
+def begin_commit(doc):
+    """doc.begin_commit(), naming the document when doc knows it (a kipy
+    Board: ._doc + ._kicad)."""
+    spec, kicad = getattr(doc, "_doc", None), getattr(doc, "_kicad", None)
+    if spec is None or kicad is None:
+        return doc.begin_commit()
+    from kipy.common_types import Commit
+    from kipy.proto.common.commands.editor_commands_pb2 import (
+        BeginCommit, BeginCommitResponse)
+    cmd = with_document(BeginCommit(), spec)
+    return Commit(kicad.send(cmd, BeginCommitResponse).id)
+
+
+def end_commit(doc, commit, msg: str | None) -> None:
+    """push_commit(msg), or drop_commit when msg is None — with the
+    document, like begin_commit."""
+    spec, kicad = getattr(doc, "_doc", None), getattr(doc, "_kicad", None)
+    if spec is None or kicad is None:
+        if msg is None:
+            doc.drop_commit(commit)
+        else:
+            doc.push_commit(commit, msg)
+        return
+    from kipy.proto.common.commands.editor_commands_pb2 import (
+        CommitAction, EndCommit, EndCommitResponse)
+    cmd = EndCommit()
+    cmd.id.CopyFrom(commit.id)
+    if msg is None:
+        cmd.action = CommitAction.CMA_DROP
+    else:
+        cmd.action = CommitAction.CMA_COMMIT
+        cmd.message = msg
+    kicad.send(with_document(cmd, spec), EndCommitResponse)
 
 
 def _push(sch, items, msg: str) -> list[str]:

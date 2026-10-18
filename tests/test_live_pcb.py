@@ -239,6 +239,93 @@ check("committed: failed push drops the commit",
       raises(RuntimeError, lambda: _ok(doc)) is not None
       and doc.log[-1] == ("drop", "C"))
 
+
+# --- the commit names its document (KiCad 10 with several editors open) -------
+def _fields(raw: bytes) -> dict:
+    """Top-level protobuf wire fields {number: [bytes|int]}."""
+    out, i = {}, 0
+
+    def varint():
+        nonlocal i
+        n = s = 0
+        while True:
+            b = raw[i]
+            i += 1
+            n |= (b & 0x7F) << s
+            s += 7
+            if not b & 0x80:
+                return n
+
+    while i < len(raw):
+        key = varint()
+        num, wt = key >> 3, key & 7
+        if wt == 0:
+            out.setdefault(num, []).append(varint())
+        elif wt == 2:
+            ln = varint()
+            out.setdefault(num, []).append(raw[i:i + ln])
+            i += ln
+        else:
+            raise ValueError(f"wire type {wt}")
+    return out
+
+
+try:
+    from kipy.proto.common.types import DocumentSpecifier, base_types_pb2
+    from kipy.proto.common.types.base_types_pb2 import ItemHeader
+    from kipy.proto.common.commands.editor_commands_pb2 import (
+        BeginCommitResponse, EndCommitResponse)
+    from kipy.util import pack_any
+except ImportError:
+    print("SKIP document-specified commits (kipy not importable: run "
+          "under the repo .venv)")
+else:
+    class FakeKiCad:
+        def __init__(self):
+            self.sent = []
+
+        def send(self, cmd, resp_type):
+            # what goes on the wire: the command packed into an Any
+            self.sent.append((cmd.DESCRIPTOR.name, pack_any(cmd).value))
+            r = resp_type()
+            if resp_type is BeginCommitResponse:
+                r.id.value = "commit-1"
+            return r
+
+    class FakeBoard:   # what kipy's Board carries: _kicad + _doc
+        def __init__(self):
+            self._kicad = FakeKiCad()
+            self._doc = DocumentSpecifier()
+            self._doc.type = base_types_pb2.DocumentType.DOCTYPE_PCB
+            self._doc.board_filename = "rev3.kicad_pcb"
+
+        def begin_commit(self):
+            raise AssertionError("kipy's begin_commit sends no document")
+
+    def doc_of(field_bytes):
+        h = ItemHeader()
+        h.ParseFromString(field_bytes)
+        return h.document
+
+    b = FakeBoard()
+    with committed(b, "kx move R1"):
+        pass
+    (n1, r1), (n2, r2) = b._kicad.sent
+    f1, f2 = _fields(r1), _fields(r2)
+    check("doc commit: BeginCommit then EndCommit", (n1, n2) == ("BeginCommit", "EndCommit"))
+    check("doc commit: BeginCommit field 1 = header with the board",
+          doc_of(f1[1][0]) == b._doc)
+    check("doc commit: EndCommit field 4 = header with the board",
+          doc_of(f2[4][0]) == b._doc)
+    check("doc commit: EndCommit keeps id, action COMMIT, message",
+          f2[2] == [1] and f2[3] == [b"kx move R1"] and b"commit-1" in f2[1][0])
+    d = FakeBoard()
+    d.log = []
+    raises(ValueError, lambda: _boom(d))
+    f = _fields(d._kicad.sent[-1][1])
+    check("doc commit: an exception drops the commit with the document",
+          f[2] == [2] and doc_of(f[4][0]) == d._doc)
+
 # --- placement plan / readback / files ----------------------------------------
 cur = {"R1": {"ref": "R1", "x": 10.0, "y": 20.0, "rot": 0.0, "side": "top",
               "locked": False},
