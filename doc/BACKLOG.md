@@ -76,6 +76,20 @@
       Follow-ups: IPC driver once a KiCad serves schematic Save/Revert;
       restore the operator's sheet + zoom after revert (revert lands on
       root); a .kicad_pro change is not reloaded by revert.
+- [x] kx vendor (vendor.py, from the Xena Rev.3 gen/vendor_libs.py):
+      used symbols/footprints/models into PROJ/libs, shadowing lib-table
+      rows, ${KIPRJMOD} model paths, pruning, --check; silk strip with
+      generated polarity marks (policy fields); generated models (box,
+      STEP via OCP, VRML fallback the footprint points at) with a builder
+      hook + no_model. Xena output byte-identical through the hook.
+      Same PR: board commits name their document (KiCad 10 refused
+      BeginCommit with two editors open; kipy 0.8 lacks the field, sent
+      as wire bytes), live_sch tracks what the editor loaded (stale after
+      git checkout -> revert; `kx live sch reload`), non-modal frames
+      are not dialogs, kx fetch resolves PROJECT_DIR. Follow-ups: STEP
+      output is not deterministic (OCP style order + timestamp) — a
+      rebuilt model always diffs; window-type (_NET_WM_WINDOW_TYPE)
+      instead of title lists for frames.
 - [ ] netmodel: file-level net model extraction. Parse .kicad_sch +
       embedded lib_symbols → Seg/Pin/junction with REAL nets (pin_world
       over each instance's at/rot/mirror; stitch nets via labels/power

@@ -36,6 +36,9 @@ kicad_lib/
   live_remote.py  ssh unix-socket forward to a GUI on another host
   live_headless.py  Xvfb + flatpak pcbnew for tests (KiCad 10 has no
               GUI-less API server)
+  vendor.py   `kx vendor`: used symbols/footprints/3D models into the
+              project, shadowing lib tables, silk policy, generated
+              models (project builder hook)
   cli.py      `kx` entry point
 ```
 

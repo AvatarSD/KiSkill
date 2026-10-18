@@ -17,6 +17,11 @@ Subcommands grow with the atomic-op set (DESIGN.md §4). Today:
   kx find QUERY...          ranked symbol search over the index
   kx fetch LCSC_ID PROJ     download symbol+fp+3D, register lib tables
   kx import-zip ZIP PROJ    import SnapEDA/UltraLibrarian zip, register
+  kx vendor PROJ [--check] [--config F]
+                            copy every used symbol/footprint/3D model into
+                            PROJ/libs, shadow the global lib nicknames,
+                            strip silk + polarity marks, generate missing
+                            models (kicad_lib/vendor.py)
   kx env [PROJECT_DIR]      backend detection: file/ipc/headless, locks
   kx fab SCH|- PCB|- OUTDIR fab bundle: BOM + JLC BOM/CPL + gerbers+drill
   kx live CMD [ARGS]        verified atomic ops on the RUNNING KiCad
@@ -24,7 +29,7 @@ Subcommands grow with the atomic-op set (DESIGN.md §4). Today:
                             label/text/rm)
   kx live pcb CMD [ARGS]    live BOARD ops, one undo step each (summary/fps/
                             move/rotate/flip/place/show/refill/undo/save)
-  kx live sch status|save|revert|regen [--dir D] [--host H] -- CMD
+  kx live sch status|save|revert|reload|regen [--dir D] [--host H] -- CMD
                             regenerate a schematic the GUI has OPEN: save the
                             editor, run the generator, revert the editor onto
                             the result (KiCad 10: through its X11 window)
@@ -356,6 +361,9 @@ def main(argv: list[str] | None = None) -> int:
         json.dump(source.fetch_lcsc(argv[1], argv[2]), sys.stdout, indent=1)
         print()
         return 0
+    if argv[0] == "vendor":
+        from . import vendor
+        return vendor.main(argv[1:])
     if argv[0] == "import-zip" and len(argv) >= 3:
         from . import source
         json.dump(source.import_zip(argv[1], argv[2]), sys.stdout, indent=1)
