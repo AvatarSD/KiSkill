@@ -37,9 +37,30 @@ description: >
   API): `kx import-zip part.zip /path/to/project`
   → libs/<name>.kicad_sym + .pretty + tables; legacy .lib auto-upgraded
   via kicad-cli sym upgrade.
+  PROJECT_DIR may be relative or outside the cwd (kx resolves it).
 - Always sanity-check fetched footprints visually: render via
   `kicad-cli pcb export svg` on a scratch board, compare against the
   datasheet land pattern. Internet footprints are guilty until proven.
+
+## Vendoring — the project carries its own libraries
+
+`kx vendor PROJ [--check] [--config gen/vendor_cfg.py]` copies ONLY the
+used symbols (plus `extends` bases) and footprints of the official
+libraries into PROJ/libs/kicad/, every 3D model into PROJ/libs/3d/ with
+${KIPRJMOD} paths, and adds project lib-table rows under the SAME
+nicknames (the project table wins over the global one; rows tagged by
+`descr`, hand rows untouched). Unused copies are pruned. Footprints lose
+their silkscreen except one generated polarity mark (cathode bar, "+",
+pin-1 dot; policy fields `no_mark_libs`/`bar_libs`/`plus_libs` or a
+`mark_kind` callable). Missing models are generated (box from Fab /
+courtyard, heights by name fragment; STEP via an OCP Python —
+`KX_OCP_PYTHON` — else VRML). Project-specific models: `special`
+{lib:name: kind} + `builders` {kind: fn(fab_bbox, pads, name) ->
+{"boxes", "shapes"}}; hole-only footprints in `no_model`. Config: a
+.json of fields (PROJ/kx-vendor.json is read automatically) or a .py
+with `configure(cfg)`. `--check` exits 1 if anything would change — use
+it as a CI/pre-commit gate. The board is not touched (Update Footprints
+from Library in the PCB editor).
 
 ## Registration
 
