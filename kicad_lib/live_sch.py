@@ -16,6 +16,16 @@
    content on screen. Reverting cannot lose work: step 1 saved it and
    step 2 absorbed it (or refused, writing nothing).
 
+What the editor has LOADED is tracked too, not only what the run wrote:
+a git checkout/merge that rewrote the sheets while the editor was open
+leaves it showing the old content though the generator then changes
+nothing. Each reload records the sheets' digest against the editor's
+lock file (~/.cache/kx/live_sch.json); a session reverts whenever disk
+differs from that record. With no record for this lock (an editor kx
+never reloaded), a sheet newer than the lock counts as different. An
+editor just saved holds what is on disk. `kx live sch reload` does the
+same check without running a generator.
+
 Why not IPC: KiCad 10.0.7 serves no schematic item read/write and no
 save/revert over IPC (live.sch_capabilities measures it per server). When
 a KiCad serves SaveDocument + RevertDocument for schematics (v11), steps
@@ -110,6 +120,31 @@ def call(action: str, stem: str, host: str | None = None,
     return out
 
 
+def _state_file() -> pathlib.Path:
+    base = os.environ.get("XDG_CACHE_HOME") or str(pathlib.Path.home() / ".cache")
+    return pathlib.Path(base) / "kx" / "live_sch.json"
+
+
+def _load_state() -> dict:
+    try:
+        return json.loads(_state_file().read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def _lock_id(p: dict) -> list:
+    """The editor's lock files with their mtimes: a new editor session
+    (KiCad reopened the schematic) writes a new lock."""
+    out = []
+    for lck in sorted(p["locks"]):
+        if lck.endswith(".kicad_sch.lck"):
+            try:
+                out.append([lck, os.stat(lck).st_mtime_ns])
+            except OSError:
+                pass
+    return out
+
+
 def _digest(dirs) -> dict[str, str]:
     out = {}
     for d in dirs:
@@ -142,12 +177,48 @@ class Live:
         return [dict(p, window=call("find", p["stem"], p["via"],
                                     self.display)) for p in self.editors]
 
+    def _key(self, p: dict) -> str:
+        return f"{p['dir']}::{p['stem']}"
+
+    def remember(self, p: dict) -> None:
+        """Record that p's editor now shows what is on disk."""
+        st = _load_state()
+        st[self._key(p)] = {"lock": _lock_id(p), "digest": _digest([p["dir"]])}
+        f = _state_file()
+        try:
+            f.parent.mkdir(parents=True, exist_ok=True)
+            tmp = f.with_suffix(".tmp")
+            tmp.write_text(json.dumps(st, indent=1, sort_keys=True))
+            tmp.replace(f)
+        except OSError as e:
+            self.log.append(f"could not record the editor state ({e})")
+
+    def stale(self, p: dict) -> str | None:
+        """Why p's editor shows something other than the disk (None when
+        it does not)."""
+        if p.get("saved"):
+            return None   # Ctrl+S just wrote the editor's state to disk
+        disk = _digest([p["dir"]])
+        rec = _load_state().get(self._key(p))
+        if rec and rec.get("lock") == _lock_id(p):
+            return (None if rec.get("digest") == disk else
+                    "sheets changed on disk since the editor loaded them")
+        try:
+            t_lock = min(os.stat(lck).st_mtime_ns for lck, _ in _lock_id(p))
+        except ValueError:
+            return None
+        newer = sorted(pathlib.Path(f).name for f in disk
+                       if os.stat(f).st_mtime_ns > t_lock)
+        return (f"{', '.join(newer)} newer than the editor's lock (no "
+                "record of what it loaded)") if newer else None
+
     def save(self) -> None:
         if not self.projects:
             raise NotLive("KiCad does not hold these projects — "
                           "regenerate the plain way")
         for p in self.editors:
             r = call("save", p["stem"], p["via"], self.display)
+            p["saved"] = bool(r.get("saved"))
             where = p["via"] or "local"
             self.log.append(f"{p['stem']} ({where}): " + (
                 "saved the editor's unsaved edits" if r["saved"]
@@ -157,10 +228,26 @@ class Live:
                 self.log.append(f"{p['stem']}: only the project manager "
                                 "holds it (no schematic editor to reload)")
 
-    def revert(self) -> None:
+    def revert(self, only: list | None = None) -> None:
         for p in self.editors:
+            if only is not None and p not in only:
+                continue
             r = call("revert", p["stem"], p["via"], self.display)
             self.log.append(f"{p['stem']}: editor reloaded ({r['title']})")
+            p["saved"] = False
+            self.remember(p)
+
+    def reload(self) -> None:
+        """Revert each editor whose loaded sheets differ from the disk."""
+        todo = []
+        for p in self.editors:
+            why = self.stale(p)
+            if why:
+                self.log.append(f"{p['stem']}: {why}")
+                todo.append(p)
+            else:
+                self.log.append(f"{p['stem']}: editor shows the disk")
+        self.revert(todo)
 
 
 @contextlib.contextmanager
@@ -170,6 +257,11 @@ def session(dirs, host: str | None = None, display: str | None = None):
     is written when no editor can be driven."""
     lv = Live(dirs, host, display)
     lv.save()
+    stale = {}
+    for p in lv.editors:
+        why = lv.stale(p)
+        if why:
+            stale[p["stem"]] = why
     before = _digest(lv.dirs)
     old = os.environ.get(SAVED_ENV)
     os.environ[SAVED_ENV] = ",".join(lv.holders())
@@ -180,14 +272,20 @@ def session(dirs, host: str | None = None, display: str | None = None):
             os.environ.pop(SAVED_ENV, None)
         else:
             os.environ[SAVED_ENV] = old
-        if _digest(lv.dirs) != before:
+        changed = _digest(lv.dirs) != before
+        for stem, why in stale.items():
+            lv.log.append(f"{stem}: editor was stale ({why})")
+        if changed or stale:
             try:
                 lv.revert()
             except NotLive as e:
                 raise ReloadFailed(
-                    f"sheets regenerated, editor NOT reloaded ({e}) — in "
-                    "KiCad do File > Revert before saving anything") from e
+                    f"sheets {'regenerated' if changed else 'differ from the editor'}"
+                    f", editor NOT reloaded ({e}) — in KiCad do File > Revert "
+                    "before saving anything") from e
         else:
+            for p in lv.editors:
+                lv.remember(p)
             lv.log.append("no sheet changed on disk — editors left as they are")
 
 
@@ -206,6 +304,8 @@ def regen(dirs, cmd: list[str], host=None, display=None) -> dict:
 
 USE = """kx live sch status [--dir D]...           projects held, editors found
 kx live sch save|revert [--dir D]...      one step on the open editors
+kx live sch reload [--dir D]...           revert the editors whose sheets
+    changed on disk since they loaded them (git checkout/merge)
 kx live sch regen [--dir D]... [--host H] [--display :N] -- CMD...
     save the open editors, run the generator CMD (regen lets the saved
     editors' locks through), revert the editors onto the result
@@ -237,6 +337,9 @@ def main(argv: list[str]) -> int:
             out = {"log": lv.log}
         elif act == "revert":
             lv.revert()
+            out = {"log": lv.log}
+        elif act == "reload":
+            lv.reload()
             out = {"log": lv.log}
         elif act == "regen" and cmd:
             out = regen(dirs, cmd, host, display)
