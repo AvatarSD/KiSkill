@@ -67,6 +67,7 @@ check("revert menu index: standalone 5, project manager 2",
 
 # --- locks -----------------------------------------------------------------
 tmp = pathlib.Path(tempfile.mkdtemp(prefix="kx_livesch_"))
+os.environ["XDG_CACHE_HOME"] = str(tmp / "cache")   # editor-state record
 proj, other = tmp / "rev3", tmp / "ocxo"
 for d in (proj, other):
     d.mkdir()
@@ -192,6 +193,88 @@ r = live_sch.regen([proj], [sys.executable, "-c",
 check("regen: runs the command with the holder env, then reverts",
       r["ok"] and r["live"] and sheet.read_text() == "sd@book"
       and calls[-1][0] == "revert")
+
+# --- a stale editor: sheets changed on disk outside the regen ---------------
+def fake_clean(action, stem, host=None, display=None):
+    calls.append((action, stem, host))
+    return {"saved": False, "title": f"{stem} — Schematic Editor"}
+
+
+live_sch.call = fake_clean
+st_file = tmp / "cache/kx/live_sch.json"
+check("record: the last reload stored what the editor shows",
+      st_file.exists() and str(sheet) in json.dumps(json.loads(st_file.read_text())))
+calls.clear()
+with live_sch.session([proj]) as lv:
+    pass
+check("stale: editor matches its record -> no revert",
+      [c[0] for c in calls] == ["save"])
+sheet.write_text("(kicad_sch (git checkout))\n")       # outside any regen
+calls.clear()
+with live_sch.session([proj]) as lv:
+    pass                                               # generator: no change
+check("stale: disk changed since the editor loaded it -> revert",
+      [c[0] for c in calls] == ["save", "revert"]
+      and any("editor was stale" in x for x in lv.log))
+calls.clear()
+with live_sch.session([proj]) as lv:
+    pass
+check("stale: after that reload the editor is current again",
+      [c[0] for c in calls] == ["save"])
+
+st_file.unlink()                                       # no record at all
+sch_lock = proj / "~rev3.kicad_sch.lck"
+os.utime(sch_lock, ns=(4 * 10**18, 4 * 10**18))        # lock newer than sheet
+calls.clear()
+with live_sch.session([proj]) as lv:
+    pass
+check("no record, sheets older than the lock -> no revert",
+      [c[0] for c in calls] == ["save"])
+st_file.unlink()
+os.utime(sch_lock, ns=(10**9, 10**9))                  # lock older than sheet
+calls.clear()
+with live_sch.session([proj]) as lv:
+    pass
+check("no record, a sheet newer than the lock -> revert",
+      [c[0] for c in calls] == ["save", "revert"]
+      and any("newer than the editor's lock" in x for x in lv.log))
+lock(sch_lock, "sd", "book")                           # KiCad reopened it
+sheet.write_text("(kicad_sch (other))\n")
+os.utime(sch_lock, ns=(5 * 10**18, 5 * 10**18))
+calls.clear()
+lv = live_sch.Live([proj])
+lv.reload()
+check("reload: a new editor session (new lock) is judged afresh",
+      [c[0] for c in calls] == [] and any("shows the disk" in x for x in lv.log))
+sheet.write_text("(kicad_sch (merged))\n")
+os.utime(sheet, ns=(6 * 10**18, 6 * 10**18))
+calls.clear()
+lv = live_sch.Live([proj])
+lv.reload()
+check("reload: reverts an editor whose sheets changed under it",
+      [c[0] for c in calls] == ["revert"])
+
+calls.clear()
+live_sch.call = fake_call
+with live_sch.session([proj]) as lv:
+    sheet.write_text("(kicad_sch (x))\n")
+check("a saved editor is never judged stale, only by the run's change",
+      [c[0] for c in calls] == ["save", "revert"]
+      and not any("stale" in x for x in lv.log))
+
+# --- non-modal frames are not dialogs ---------------------------------------
+for title in ("3D Viewer — rev3", "rev3 — 3D Viewer", "3D Viewer",
+              "Footprint Library Browser — Device",
+              "Symbol Library Browser", "Simulator — rev3"):
+    check(f"dialogs: {title!r} is a harmless frame",
+          xe.dialogs(W + [{"id": "7", "title": title, "cls": "kicad"}]) == [])
+check("dialogs: a real dialog beside a 3D Viewer still refuses",
+      xe.dialogs(W + [{"id": "7", "title": "3D Viewer — rev3", "cls": "kicad"},
+                      {"id": "8", "title": "Annotate Schematic", "cls": "kicad"}])
+      == ["Annotate Schematic"])
+check("dialogs: a name merely containing a frame word is still a dialog",
+      xe.dialogs(W + [{"id": "8", "title": "3D Viewer Settings", "cls": "kicad"}])
+      == ["3D Viewer Settings"])
 
 # --- capability words --------------------------------------------------------
 check("sch_scope: KiCad 10.0.7 measures list-only",

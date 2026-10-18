@@ -16,7 +16,8 @@ guessing, and never types into a window it did not identify:
     "*" while the document has unsaved changes (that is how "modified"
     is read);
   - any other visible KiCad window (a dialog the operator has open)
-    refuses the whole operation — nothing is typed;
+    refuses the whole operation — nothing is typed; known non-modal
+    frames (3D Viewer, library browsers, simulator...) are harmless;
   - save = Ctrl+S, then the "*" must disappear (else NotSaved);
   - revert = File menu > Revert (the item index depends on how the editor
     runs: 5 in standalone eeschema, 2 under the project manager, told
@@ -45,6 +46,25 @@ import time
 EDITOR_SUFFIX = " — Schematic Editor"
 FRAME_RE = re.compile(r" — (Schematic Editor|PCB Editor|Symbol Editor|"
                       r"Footprint Editor|KiCad \d+(\.\d+)*)$")
+# Non-modal KiCad frames that may stay open beside the editor: they block
+# no keystroke, so they are not "a dialog the operator has open". Matched
+# as the whole title or a "NAME — ..." / "... — NAME" part.
+NONMODAL_FRAMES = ("3D Viewer", "Footprint Library Browser",
+                   "Symbol Library Browser", "Footprint Viewer",
+                   "Symbol Viewer", "Footprint Wizard", "Simulator",
+                   "SPICE Simulator", "Gerber Viewer", "Calculator Tools",
+                   "Image Converter", "Drawing Sheet Editor",
+                   "Bitmap to Component Converter")
+NONMODAL_RE = re.compile(
+    r"(^|\s—\s)(" + "|".join(map(re.escape, NONMODAL_FRAMES)) +
+    r")(\s*(\[[^\]]*\]|\([^)]*\)))?(\s—\s|$)")
+
+
+def is_frame(title: str) -> bool:
+    """A main frame or a known non-modal frame (not an open dialog)."""
+    return bool(FRAME_RE.search(title) or NONMODAL_RE.search(title))
+
+
 # File menu position of Revert (first item highlighted when the menu
 # opens): standalone eeschema has New, Open, Open Recent, Save, Save As,
 # Revert; under the project manager Save, Save Current Sheet Copy As,
@@ -95,7 +115,7 @@ def pick_editor(windows: list[dict], project: str) -> dict:
 def dialogs(windows: list[dict]) -> list[str]:
     """Visible KiCad windows that are not main frames = open dialogs."""
     return [w["title"] for w in windows
-            if w["title"] and not FRAME_RE.search(w["title"])]
+            if w["title"] and not is_frame(w["title"])]
 
 
 _XAUTH: dict[str, str] = {}   # DISPLAY -> the KiCad process's XAUTHORITY
@@ -264,7 +284,7 @@ def revert(project: str, display: str | None = None,
         for w in x.windows():
             if w["title"] == CONFIRM_TITLE:
                 confirm = w
-            elif w["title"] and not FRAME_RE.search(w["title"]):
+            elif w["title"] and not is_frame(w["title"]):
                 x.focus(w["id"])
                 x.run("key", "Escape")
                 raise EditorError(f"File menu item {downs} opened "

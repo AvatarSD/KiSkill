@@ -367,9 +367,16 @@ generate()` (Xena: `build_all.py --live`).
 2. The generator runs with `KX_REGEN_SAVED_BY=user@host,…`;
    `guard_locks()` lets exactly those holders' locks through, so absorb
    reads the saved edits by the usual rules (refusals still refuse).
-3. REVERT the editors (File > Revert, confirmed) — only if a sheet on
-   disk changed. A revert that fails raises `ReloadFailed`: the sheets
-   ARE regenerated; tell the operator to File > Revert before saving.
+3. REVERT the editors (File > Revert, confirmed) — when a sheet on
+   disk changed, OR the editor was already stale (a git checkout/merge
+   rewrote the sheets after it loaded them: each reload records the
+   sheets' digest against the editor's lock in ~/.cache/kx/live_sch.json;
+   no record + a sheet newer than the lock counts as stale). A revert
+   that fails raises `ReloadFailed`: tell the operator to File > Revert
+   before saving. `kx live sch reload --dir PROJ` does only this check +
+   revert (after a merge, no generator needed). Non-modal frames (3D
+   Viewer, library browsers, simulator) are not dialogs: they do not
+   stop a live run.
 
 KiCad 10 has no IPC for 1 and 3, so x11_editor.py types them into the
 editor's own window with xdotool (Xvfb, X11, or XWayland — the flatpak is
