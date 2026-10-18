@@ -5,6 +5,7 @@ commit message has the evidence) since it needs the EasyEDA API.
 Usage: python3 tests/test_source.py
 """
 
+import os
 import pathlib
 import sys
 import tempfile
@@ -59,6 +60,46 @@ with tempfile.TemporaryDirectory() as td:
           and res.get("registered_fp"))
     check("zip: fp-table parses", len(list(sexp.find_all(
         sexp.load_file(str(proj / "fp-lib-table")), "lib"))) == 1)
+
+# fetch_lcsc with a stand-in easyeda2kicad that does what 1.0.1 does with
+# --project-relative: Path(OUTPUT.3dshapes).relative_to(Path.cwd())
+FAKE = """#!/usr/bin/env python3
+import sys
+from pathlib import Path
+out = next(a.split("=", 1)[1] if "=" in a else sys.argv[sys.argv.index(a) + 1]
+           for a in sys.argv if a.startswith("--output"))
+rel = Path(f"{out}.3dshapes").relative_to(Path.cwd()).as_posix()
+Path(f"{out}.kicad_sym").write_text('(kicad_symbol_lib (version 20211014))\\n')
+Path(f"{out}.pretty").mkdir(exist_ok=True)
+print("model", "${KIPRJMOD}/" + rel)
+"""
+with tempfile.TemporaryDirectory() as td:
+    td = pathlib.Path(td)
+    (td / "bin").mkdir()
+    exe = td / "bin/easyeda2kicad"
+    exe.write_text(FAKE)
+    exe.chmod(0o755)
+    real_bin, source.VENV_BIN = source.VENV_BIN, td / "bin"
+    (td / "work").mkdir()
+    (td / "far/away/proj").mkdir(parents=True)
+    old_cwd = os.getcwd()
+    try:
+        os.chdir(td / "work")
+        for label, arg in (("relative", "../far/away/proj"),
+                           ("outside cwd", str(td / "far/away/proj"))):
+            try:
+                res = source.fetch_lcsc("C1", arg)
+                ok = (res["log"] == ["model ${KIPRJMOD}/libs/easyeda2kicad.3dshapes"]
+                      and pathlib.Path(res["symbol_lib"]).is_absolute())
+            except (RuntimeError, ValueError) as e:
+                print("   ", e)
+                ok = False
+            check(f"fetch: PROJECT_DIR {label} of cwd works", ok)
+        check("fetch: tables registered in the project",
+              "easyeda2kicad" in (td / "far/away/proj/sym-lib-table").read_text())
+    finally:
+        os.chdir(old_cwd)
+        source.VENV_BIN = real_bin
 
 print("PASS" if not FAILS else f"FAIL ({len(FAILS)})")
 raise SystemExit(0 if not FAILS else 1)

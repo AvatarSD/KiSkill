@@ -52,15 +52,18 @@ def register(project_dir: str, table: str, name: str, uri: str) -> bool:
 def fetch_lcsc(lcsc_id: str, project_dir: str) -> dict:
     """Download symbol+footprint+3D for an LCSC part into
     PROJECT_DIR/libs/easyeda2kicad.* and register both lib tables."""
-    proj = pathlib.Path(project_dir)
+    # absolute + symlink-free: easyeda2kicad 1.0.1 computes the model path
+    # as OUTPUT.relative_to(Path.cwd()), which raises ValueError for a
+    # relative PROJECT_DIR or one outside the caller's cwd
+    proj = pathlib.Path(project_dir).expanduser().resolve()
+    project_dir = str(proj)
     out = proj / "libs/easyeda2kicad"
     out.parent.mkdir(parents=True, exist_ok=True)
     exe = VENV_BIN / "easyeda2kicad"
     cmd = [str(exe) if exe.exists() else "easyeda2kicad", "--full",
            f"--lcsc_id={lcsc_id}", "--output", str(out), "--overwrite",
            "--project-relative"]
-    # easyeda2kicad 1.0.1 resolves --project-relative against CWD, so run
-    # from the project dir or it crashes on out-of-tree outputs
+    # ...and run it from the project dir so the model path is project-relative
     r = subprocess.run(cmd, capture_output=True, text=True, cwd=project_dir)
     if r.returncode != 0:
         raise RuntimeError(f"easyeda2kicad failed: {r.stderr or r.stdout}")
